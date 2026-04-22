@@ -248,6 +248,7 @@ export type Database = {
       }
       invoice_settings: {
         Row: {
+          code: string
           company_id: string
           created_at: string
           id: string
@@ -260,6 +261,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          code?: string
           company_id: string
           created_at?: string
           id?: string
@@ -272,6 +274,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          code?: string
           company_id?: string
           created_at?: string
           id?: string

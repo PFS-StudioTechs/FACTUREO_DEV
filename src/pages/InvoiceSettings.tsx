@@ -15,6 +15,7 @@ const InvoiceSettings = () => {
   const queryClient = useQueryClient();
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [prefix, setPrefix] = useState("");
+  const [code, setCode] = useState("");
   const [numeroFormat, setNumeroFormat] = useState("001");
   const [nextNumber, setNextNumber] = useState(1);
   const [suffixDateFormat, setSuffixDateFormat] = useState("");
@@ -45,12 +46,14 @@ const InvoiceSettings = () => {
   useEffect(() => {
     if (settings) {
       setPrefix(settings.prefix);
+      setCode(settings.code || "");
       setNumeroFormat(settings.numero_format);
       setNextNumber(settings.next_number);
       setSuffixDateFormat(settings.suffix_date_format || "none");
       setSeparator(settings.separator || "none");
     } else {
       setPrefix("");
+      setCode("");
       setNumeroFormat("001");
       setNextNumber(1);
       setSuffixDateFormat("none");
@@ -63,6 +66,7 @@ const InvoiceSettings = () => {
     let result = "";
     const sep = separator === "none" ? "" : separator;
     if (prefix) result += prefix + sep;
+    if (code) result += code;
     result += numStr;
     if (suffixDateFormat && suffixDateFormat !== "none") {
       const now = new Date();
@@ -82,6 +86,7 @@ const InvoiceSettings = () => {
         company_id: selectedCompanyId,
         user_id: user!.id,
         prefix,
+        code,
         numero_format: numeroFormat,
         next_number: nextNumber,
         suffix_date_format: suffixDateFormat === "none" ? "" : suffixDateFormat,
@@ -130,7 +135,8 @@ const InvoiceSettings = () => {
             <CardContent className="space-y-4">
               <div className="space-y-1">
                 <Label>Préfixe (optionnel)</Label>
-                <Input value={prefix} onChange={(e) => setPrefix(e.target.value)} placeholder="ex: FAC, FACT, KSD" />
+                <Input value={prefix} onChange={(e) => setPrefix(e.target.value)} placeholder="ex: Facture, FACT" />
+                <p className="text-xs text-muted-foreground">Mot clé placé en début de numéro, suivi du séparateur</p>
               </div>
 
               <div className="space-y-1">
@@ -145,6 +151,12 @@ const InvoiceSettings = () => {
                     <SelectItem value="none">Aucun</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-1">
+                <Label>Code personnalisé (optionnel)</Label>
+                <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ex: KSD, AB, 2024" maxLength={10} />
+                <p className="text-xs text-muted-foreground">Collé directement devant le numéro, sans séparateur — ex : <span className="font-medium">Facture_KSD0031</span></p>
               </div>
 
               <div className="space-y-1">

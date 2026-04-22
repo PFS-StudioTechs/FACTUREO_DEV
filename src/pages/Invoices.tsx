@@ -115,6 +115,7 @@ const Invoices = () => {
     let result = "";
     const sep = settings.separator || "";
     if (settings.prefix) result += settings.prefix + sep;
+    if (settings.code) result += settings.code;
     result += numStr;
     if (settings.suffix_date_format) {
       const dateForFormat = dateFacturation || new Date();
