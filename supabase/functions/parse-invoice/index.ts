@@ -5,141 +5,108 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MIME_MAP: Record<string, string> = {
-  pdf: "application/pdf",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-  heic: "image/heic",
+const IMAGE_EXTS: Record<string, string> = {
+  jpg: "image/jpeg", jpeg: "image/jpeg",
+  png: "image/png", webp: "image/webp",
 };
-
-const DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1";
-const DEFAULT_VISION_MODEL = "gpt-4o-mini";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
-
-    const OPENAI_BASE_URL = Deno.env.get("OPENAI_API_BASE_URL") || DEFAULT_OPENAI_BASE_URL;
-    const OPENAI_VISION_MODEL = Deno.env.get("OPENAI_VISION_MODEL") || DEFAULT_VISION_MODEL;
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file) throw new Error("Aucun fichier fourni");
 
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
     const arrayBuffer = await file.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
-    let binary = "";
-    const chunk = 8192;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+
+    let base64 = "";
+    for (let i = 0; i < bytes.length; i += 8192) {
+      base64 += String.fromCharCode(...bytes.subarray(i, i + 8192));
     }
-    const base64 = btoa(binary);
+    base64 = btoa(base64);
 
-    const ext = file.name.split(".").pop()?.toLowerCase() || "";
-    const mimeType = MIME_MAP[ext] || file.type || "application/octet-stream";
+    // Build content part based on file type
+    let filePart: unknown;
+    if (ext === "pdf") {
+      filePart = {
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data: base64 },
+      };
+    } else if (IMAGE_EXTS[ext]) {
+      filePart = {
+        type: "image",
+        source: { type: "base64", media_type: IMAGE_EXTS[ext], data: base64 },
+      };
+    } else {
+      return new Response(
+        JSON.stringify({ error: `Format .${ext} non supporté. Utilisez PDF, JPG, PNG ou WEBP.` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    const aiResponse = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+    const systemPrompt = `Tu es un assistant spécialisé dans l'extraction d'informations de factures professionnelles françaises.
+À partir du document fourni, extrais les données et retourne un JSON avec exactement ces champs :
+- numero_facture: numéro de la facture
+- date_facturation: date au format YYYY-MM-DD
+- designation: nom de la personne qui exécute la mission
+- nombre_jours: nombre de jours travaillés (nombre, 0 si non trouvé)
+- tjm: taux journalier moyen en euros (nombre, 0 si non trouvé)
+- montant_ht: montant hors taxe en euros (nombre)
+- taux_tva: taux de TVA en % (nombre, ex: 20)
+- montant_tva: montant de TVA en euros (nombre)
+- montant_ttc: montant TTC en euros (nombre)
+- numero_bon_commande: numéro de bon de commande (chaîne vide si non trouvé)
+- descriptif_mission: description de la mission
+- conditions_paiement: délai de paiement en jours (nombre, 30 par défaut)
+- mode_paiement: VIREMENT, CHEQUE, PRELEVEMENT ou ESPECES
+- client_nom: nom ou raison sociale du client (celui qui reçoit la facture)
+
+Retourne UNIQUEMENT le JSON valide, sans markdown, sans backticks, sans explication.`;
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: OPENAI_VISION_MODEL,
-        messages: [
-          {
-            role: "system",
-            content: `Tu es un assistant spécialisé dans l'extraction d'informations de factures professionnelles françaises.
-À partir du document fourni (une facture), extrais les informations demandées et renvoie-les via la fonction fournie.`,
-          },
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Analyse cette facture (${file.name}) et extrais toutes les informations attendues.`,
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mimeType};base64,${base64}`,
-                },
-              },
-            ],
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "extract_invoice_data",
-              description: "Extraire toutes les données structurées d'une facture",
-              parameters: {
-                type: "object",
-                properties: {
-                  numero_facture: { type: "string" },
-                  date_facturation: { type: "string" },
-                  designation: { type: "string" },
-                  nombre_jours: { type: "number" },
-                  tjm: { type: "number" },
-                  montant_ht: { type: "number" },
-                  taux_tva: { type: "number" },
-                  montant_tva: { type: "number" },
-                  montant_ttc: { type: "number" },
-                  numero_bon_commande: { type: "string" },
-                  descriptif_mission: { type: "string" },
-                  conditions_paiement: { type: "number" },
-                  mode_paiement: { type: "string", enum: ["VIREMENT", "CHEQUE", "PRELEVEMENT", "ESPECES", "AUTRE"] },
-                  client_nom: { type: "string" },
-                },
-                required: [
-                  "numero_facture",
-                  "date_facturation",
-                  "montant_ht",
-                  "montant_tva",
-                  "montant_ttc",
-                  "taux_tva",
-                  "client_nom",
-                ],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "extract_invoice_data" } },
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{
+          role: "user",
+          content: [
+            filePart,
+            { type: "text", text: `Analyse cette facture (${file.name}) et extrais les données au format JSON strict.` },
+          ],
+        }],
       }),
     });
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error("OpenAI error:", aiResponse.status, errText);
-      if (aiResponse.status === 429) {
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Anthropic error:", response.status, errText);
+      if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Trop de requêtes, réessayez dans quelques instants." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Crédits IA épuisés." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`OpenAI error (${aiResponse.status})`);
+      throw new Error(`Erreur Anthropic (${response.status})`);
     }
 
-    const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
-      throw new Error("Impossible d'extraire les informations de la facture");
-    }
+    const result = await response.json();
+    const textContent = result.content?.[0]?.text;
+    if (!textContent) throw new Error("Impossible d'extraire les informations de la facture");
 
-    const extracted = JSON.parse(toolCall.function.arguments);
+    const cleaned = textContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const extracted = JSON.parse(cleaned);
 
     return new Response(JSON.stringify({ success: true, data: extracted }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
