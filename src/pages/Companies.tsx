@@ -103,12 +103,20 @@ const Companies = () => {
       const fd = new FormData();
       fd.append("file", file);
 
-      const { data: json, error: fnError } = await supabase.functions.invoke("parse-company", {
-        body: fd,
-      });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Non authentifié");
 
-      if (fnError) throw new Error(fnError.message || "Erreur d'extraction");
-      if (!json?.success) throw new Error(json?.error || "Erreur d'extraction");
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-company`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}` },
+          body: fd,
+        }
+      );
+
+      const json = await res.json();
+      if (!res.ok || !json?.success) throw new Error(json?.error || `Erreur ${res.status}`);
 
       const d = json?.data;
       setForm((prev) => ({
