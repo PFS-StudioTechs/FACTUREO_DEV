@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -33,57 +33,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<AppRole>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch profile + role whenever user changes
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchUserData = async (userId: string) => {
-      try {
-        const [profileRes, roleRes] = await Promise.all([
-          supabase.from("profiles").select("pseudo").eq("user_id", userId).single(),
-          supabase.rpc("get_user_role", { _user_id: userId }),
-        ]);
-        if (cancelled) return;
-        setPseudo(profileRes.data?.pseudo || "");
-        setRole((roleRes.data as AppRole) || null);
-      } catch (err) {
-        console.error("Failed to fetch user data:", err);
-        if (cancelled) return;
-        setPseudo("");
-        setRole(null);
-      }
-    };
-
-    if (user) {
-      fetchUserData(user.id).finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    } else {
+  const fetchUserData = useCallback(async (userId: string) => {
+    try {
+      const [profileRes, roleRes] = await Promise.all([
+        supabase.from("profiles").select("pseudo").eq("user_id", userId).single(),
+        supabase.rpc("get_user_role", { _user_id: userId }),
+      ]);
+      setPseudo(profileRes.data?.pseudo || "");
+      setRole((roleRes.data as AppRole) || null);
+    } catch (err) {
+      console.error("Failed to fetch user data:", err);
       setPseudo("");
       setRole(null);
-      setLoading(false);
     }
+  }, []);
 
-    return () => { cancelled = true; };
-  }, [user]);
-
-  // Listen to auth state changes — no async work here
   useEffect(() => {
+    let initialized = false;
+    let mounted = true;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
+        if (!mounted) return;
+
         setSession(session);
         setUser(session?.user ?? null);
+
+        if (session?.user) {
+          await fetchUserData(session.user.id);
+        } else {
+          setPseudo("");
+          setRole(null);
+        }
+
+        // Set loading=false only after the first event (INITIAL_SESSION) is fully processed
+        if (!initialized && mounted) {
+          initialized = true;
+          setLoading(false);
+        }
       }
     );
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [fetchUserData]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
