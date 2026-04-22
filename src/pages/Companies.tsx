@@ -114,7 +114,8 @@ const Companies = () => {
       });
 
       const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || "Erreur d'extraction");
+      console.error("parse-company response:", res.status, json);
+      if (!res.ok || !json.success) throw new Error(json.error || json.message || `Erreur ${res.status}`);
 
       const d = json.data;
       setForm((prev) => ({
