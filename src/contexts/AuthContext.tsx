@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -32,6 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [pseudo, setPseudo] = useState("");
   const [role, setRole] = useState<AppRole>(null);
   const [loading, setLoading] = useState(true);
+  const initializedRef = useRef(false);
 
   const fetchUserData = useCallback(async (userId: string) => {
     try {
@@ -49,30 +50,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    let initialized = false;
     let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (!mounted) return;
-
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          await fetchUserData(session.user.id);
-        } else {
-          setPseudo("");
-          setRole(null);
-        }
-
-        // Set loading=false only after the first event (INITIAL_SESSION) is fully processed
-        if (!initialized && mounted) {
-          initialized = true;
-          setLoading(false);
-        }
+    // Initialize from current session — sets loading=false only after role is fetched
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!mounted) return;
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        await fetchUserData(session.user.id);
+      } else {
+        setPseudo("");
+        setRole(null);
       }
-    );
+      if (mounted) {
+        initializedRef.current = true;
+        setLoading(false);
+      }
+    });
+
+    // Handle subsequent auth changes (sign in, sign out, token refresh)
+    // onAuthStateChange must NOT be async — call async helper without awaiting
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Skip INITIAL_SESSION — already handled by getSession() above
+      if (!initializedRef.current) return;
+      if (!mounted) return;
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (!session?.user) {
+        setPseudo("");
+        setRole(null);
+      } else {
+        fetchUserData(session.user.id);
+      }
+    });
 
     return () => {
       mounted = false;
