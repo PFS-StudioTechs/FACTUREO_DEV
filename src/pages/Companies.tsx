@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Plus, Building2, HelpCircle } from "lucide-react";
+import { Plus, Building2, HelpCircle, Upload, Loader2 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Company = Tables<"companies">;
@@ -52,6 +52,8 @@ const Companies = () => {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyCompany);
+  const [isParsing, setIsParsing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ["companies", user?.id],
@@ -83,6 +85,67 @@ const Companies = () => {
   const closeDialog = () => {
     setDialogOpen(false);
     setForm(emptyCompany);
+    setIsParsing(false);
+  };
+
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"];
+    if (!allowed.includes(file.type)) {
+      toast.error("Format non supporté. Utilisez une image (JPG, PNG, WEBP) ou un PDF.");
+      return;
+    }
+
+    setIsParsing(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-company`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+        body: fd,
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || "Erreur d'extraction");
+
+      const d = json.data;
+      setForm((prev) => ({
+        ...prev,
+        denomination: d.denomination || prev.denomination,
+        forme_juridique: d.forme_juridique || prev.forme_juridique,
+        capital: d.capital || prev.capital,
+        nom_contact: d.nom_contact || prev.nom_contact,
+        adresse: d.adresse || prev.adresse,
+        code_postal: d.code_postal || prev.code_postal,
+        ville: d.ville || prev.ville,
+        telephone: d.telephone ? sanitizePhone(d.telephone) : prev.telephone,
+        mail: d.mail || prev.mail,
+        siret: d.siret || prev.siret,
+        rcs_rm_ville: d.rcs_rm_ville || prev.rcs_rm_ville,
+        code_naf: d.code_naf || prev.code_naf,
+        tva_intracommunautaire: d.tva_intracommunautaire || prev.tva_intracommunautaire,
+        banque_titulaire: d.banque_titulaire || prev.banque_titulaire,
+        banque_nom: d.banque_nom || prev.banque_nom,
+        banque_adresse: d.banque_adresse || prev.banque_adresse,
+        bic_swift: d.bic_swift || prev.bic_swift,
+        code_iban: d.code_iban || prev.code_iban,
+      }));
+
+      toast.success("Informations extraites — vérifiez et complétez si nécessaire.");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Erreur lors de l'extraction");
+    } finally {
+      setIsParsing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleFieldChange = (key: string, value: string) => {
@@ -109,6 +172,37 @@ const Companies = () => {
               <DialogTitle>Nouvelle entreprise</DialogTitle>
             </DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-6">
+              {/* Import automatique par document */}
+              <div
+                className="flex items-center gap-3 p-4 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors"
+                onClick={() => !isParsing && fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
+                  className="hidden"
+                  onChange={handleFileImport}
+                />
+                {isParsing ? (
+                  <>
+                    <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium">Analyse en cours...</p>
+                      <p className="text-xs text-muted-foreground">L'IA extrait les informations du document</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-5 h-5 text-muted-foreground shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium">Importer un document</p>
+                      <p className="text-xs text-muted-foreground">JPG, PNG, WEBP ou PDF — les champs seront remplis automatiquement</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
               {fields.map((field) => (
                 <div key={field.key}>
                   {field.section && (
