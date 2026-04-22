@@ -44,6 +44,7 @@ const Invoices = () => {
   const [modePaiement, setModePaiement] = useState("VIREMENT");
   const [descriptifMission, setDescriptifMission] = useState("");
   const [numeroBonCommande, setNumeroBonCommande] = useState("");
+  const [factureNumber, setFactureNumber] = useState("");
 
   const [importing, setImporting] = useState(false);
   const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
@@ -240,12 +241,12 @@ const Invoices = () => {
       };
 
       if (editingInvoice) {
-        const { data, error } = await supabase.from("invoices").update(payload).eq("id", editingInvoice.id).select("*").single();
+        const { data, error } = await supabase.from("invoices").update({ ...payload, numero_facture: factureNumber }).eq("id", editingInvoice.id).select("*").single();
         if (error) throw error;
         return data;
       } else {
-        const numeroFacture = await generateInvoiceNumber();
-        const { data, error } = await supabase.from("invoices").insert({ ...payload, numero_facture: numeroFacture }).select("*").single();
+        const generatedNumero = factureNumber.trim() || await generateInvoiceNumber();
+        const { data, error } = await supabase.from("invoices").insert({ ...payload, numero_facture: generatedNumero }).select("*").single();
         if (error) throw error;
         return data;
       }
@@ -293,6 +294,7 @@ const Invoices = () => {
     setModePaiement("VIREMENT");
     setDescriptifMission("");
     setNumeroBonCommande("");
+    setFactureNumber("");
     setEditingInvoice(null);
   };
 
@@ -308,6 +310,7 @@ const Invoices = () => {
     setModePaiement(inv.mode_paiement);
     setDescriptifMission(inv.descriptif_mission);
     setNumeroBonCommande(inv.numero_bon_commande);
+    setFactureNumber(inv.numero_facture);
     setDialogOpen(true);
   };
 
@@ -525,6 +528,15 @@ const Invoices = () => {
             <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
               <DialogHeader><DialogTitle>{editingInvoice ? "Modifier la facture" : "Nouvelle facture"}</DialogTitle></DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-4">
+                <div className="space-y-1">
+                  <Label>N° Facture</Label>
+                  <Input
+                    value={factureNumber}
+                    onChange={(e) => setFactureNumber(e.target.value)}
+                    placeholder={editingInvoice ? "" : "Laissez vide pour numérotation automatique"}
+                    className={!editingInvoice && !factureNumber ? "text-muted-foreground" : ""}
+                  />
+                </div>
                 <div className="space-y-1">
                   <Label>Client *</Label>
                   <Select value={selectedClientId} onValueChange={setSelectedClientId} required>
