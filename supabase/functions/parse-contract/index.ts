@@ -5,50 +5,31 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MIME_MAP: Record<string, string> = {
-  "pdf": "application/pdf",
-  "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "doc": "application/msword",
-  "txt": "text/plain",
-  "jpg": "image/jpeg",
-  "jpeg": "image/jpeg",
-  "png": "image/png",
-  "webp": "image/webp",
-  "heic": "image/heic",
-  "heif": "image/heif",
+const IMAGE_EXTS: Record<string, string> = {
+  jpg: "image/jpeg", jpeg: "image/jpeg",
+  png: "image/png", webp: "image/webp",
 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file) throw new Error("Aucun fichier fourni");
 
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
     const arrayBuffer = await file.arrayBuffer();
     const bytes = new Uint8Array(arrayBuffer);
-
-    // Convert to base64
-    let base64 = "";
-    const chunk = 8192;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      base64 += String.fromCharCode(...bytes.subarray(i, i + chunk));
-    }
-    base64 = btoa(base64);
-
-    // Determine MIME type
-    const ext = file.name.split(".").pop()?.toLowerCase() || "";
-    const mimeType = MIME_MAP[ext] || file.type || "application/octet-stream";
 
     const systemPrompt = `Tu es un assistant spécialisé dans l'extraction d'informations de contrats et avenants professionnels français.
 À partir du contenu du document fourni, extrais les informations du CLIENT (pas du prestataire/fournisseur) et retourne un JSON avec les champs suivants :
 - nom: Nom ou raison sociale du client
 - adresse: Adresse postale du client
-- ville: Ville du client  
+- ville: Ville du client
 - code_postal: Code postal du client
 - numero_bon_commande: Numéro de bon de commande s'il existe
 - tjm: Taux Journalier Moyen en euros (nombre uniquement, sans symbole €)
@@ -56,83 +37,98 @@ serve(async (req) => {
 - conditions_paiement: Délai de paiement en jours (nombre uniquement)
 - mode_paiement: Mode de paiement (VIREMENT, CHEQUE, PRELEVEMENT ou ESPECES)
 
-IMPORTANT: 
+IMPORTANT:
 - Identifie bien le CLIENT (celui qui commande la prestation) vs le PRESTATAIRE (celui qui réalise la prestation).
 - Si une information n'est pas trouvée, retourne une chaîne vide "" pour les textes et "0" pour les nombres.
 - Retourne UNIQUEMENT le JSON valide, sans markdown, sans backticks, sans explication.`;
 
-    // Call Gemini API directly with multimodal support
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+    // Build content parts based on file type
+    let contentParts: unknown[];
 
-    const requestBody = {
-      contents: [
-        {
-          parts: [
-            { text: systemPrompt },
-            {
-              inline_data: {
-                mime_type: mimeType,
-                data: base64,
-              },
-            },
-            { text: `Analyse ce document (${file.name}) et extrais les informations du client au format JSON.` },
-          ],
-        },
-      ],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            nom: { type: "STRING" },
-            adresse: { type: "STRING" },
-            ville: { type: "STRING" },
-            code_postal: { type: "STRING" },
-            numero_bon_commande: { type: "STRING" },
-            tjm: { type: "STRING" },
-            descriptif_mission: { type: "STRING" },
-            conditions_paiement: { type: "STRING" },
-            mode_paiement: { type: "STRING" },
-          },
-          required: ["nom", "adresse", "ville", "code_postal", "numero_bon_commande", "tjm", "descriptif_mission", "conditions_paiement", "mode_paiement"],
-        },
-      },
-    };
+    if (ext === "txt") {
+      const text = new TextDecoder().decode(bytes);
+      contentParts = [{ type: "text", text: `Contenu du document (${file.name}):\n${text}` }];
+    } else if (IMAGE_EXTS[ext]) {
+      let base64 = "";
+      for (let i = 0; i < bytes.length; i += 8192) {
+        base64 += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      }
+      base64 = btoa(base64);
+      contentParts = [{
+        type: "image",
+        source: { type: "base64", media_type: IMAGE_EXTS[ext], data: base64 },
+      }];
+    } else if (ext === "pdf") {
+      let base64 = "";
+      for (let i = 0; i < bytes.length; i += 8192) {
+        base64 += String.fromCharCode(...bytes.subarray(i, i + 8192));
+      }
+      base64 = btoa(base64);
+      contentParts = [{
+        type: "document",
+        source: { type: "base64", media_type: "application/pdf", data: base64 },
+      }];
+    } else if (ext === "docx" || ext === "doc") {
+      return new Response(
+        JSON.stringify({ error: "Format DOCX non supporté. Veuillez convertir votre contrat en PDF avant de l'importer." }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } else {
+      return new Response(
+        JSON.stringify({ error: `Format .${ext} non supporté. Utilisez PDF, TXT ou une image.` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    const response = await fetch(geminiUrl, {
+    contentParts.push({
+      type: "text",
+      text: `Analyse ce document (${file.name}) et extrais les informations du client au format JSON strict.`,
+    });
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
+      headers: {
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: "user", content: contentParts }],
+      }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("Gemini API error:", response.status, errText);
-      
+      console.error("Anthropic API error:", response.status, errText);
+
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Trop de requêtes vers Gemini, réessayez dans quelques instants." }), {
+        return new Response(JSON.stringify({ error: "Trop de requêtes, réessayez dans quelques instants." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 403) {
-        return new Response(JSON.stringify({ error: "Clé API Gemini invalide ou quota dépassé." }), {
-          status: 403,
+      if (response.status === 401) {
+        return new Response(JSON.stringify({ error: "Clé API Anthropic invalide." }), {
+          status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`Erreur Gemini (${response.status}): ${errText}`);
+      throw new Error(`Erreur Anthropic (${response.status}): ${errText}`);
     }
 
-    const geminiResult = await response.json();
-    const textContent = geminiResult.candidates?.[0]?.content?.parts?.[0]?.text;
-    
+    const result = await response.json();
+    const textContent = result.content?.[0]?.text;
+
     if (!textContent) {
-      console.error("Gemini response:", JSON.stringify(geminiResult));
+      console.error("Anthropic response:", JSON.stringify(result));
       throw new Error("L'IA n'a pas pu extraire les informations du document");
     }
 
-    const extracted = JSON.parse(textContent);
+    const cleaned = textContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const extracted = JSON.parse(cleaned);
 
     return new Response(JSON.stringify({ success: true, data: extracted }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
