@@ -1,0 +1,226 @@
+{
+  "name": "Facturéo — Traitement Notes de Frais",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "expense-scan",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "expense-scan"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/storage/v1/object/sign/expense-scans/{{ $json.body.image_path }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "expiresIn", "value": "3600" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-signed-url",
+      "name": "Get Image Signed URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.signedURL }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-image",
+      "name": "Download Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"model\": \"claude-opus-4-7\",\n  \"max_tokens\": 1024,\n  \"tools\": [{\n    \"name\": \"extract_receipt\",\n    \"description\": \"Extraire les données d'un ticket de caisse ou note de frais\",\n    \"input_schema\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"merchant\": { \"type\": \"string\", \"description\": \"Nom du magasin ou prestataire\" },\n        \"amount\": { \"type\": \"number\", \"description\": \"Montant total TTC\" },\n        \"expense_date\": { \"type\": \"string\", \"description\": \"Date au format YYYY-MM-DD\" },\n        \"category\": { \"type\": \"string\", \"enum\": [\"Restauration\", \"Transport\", \"Hébergement\", \"Fournitures\", \"Télécom\", \"Autre\"] },\n        \"description\": { \"type\": \"string\", \"description\": \"Courte description de l'achat\" }\n      },\n      \"required\": [\"merchant\", \"amount\", \"expense_date\", \"category\"]\n    }\n  }],\n  \"tool_choice\": { \"type\": \"tool\", \"name\": \"extract_receipt\" },\n  \"messages\": [{\n    \"role\": \"user\",\n    \"content\": [{\n      \"type\": \"image\",\n      \"source\": {\n        \"type\": \"url\",\n        \"url\": \"{{ $('Get Image Signed URL').first().json.signedURL }}\"\n      }\n    }, {\n      \"type\": \"text\",\n      \"text\": \"Analyse ce ticket de caisse / note de frais et extrais les informations demandées.\"\n    }]\n  }]\n}",
+        "options": {}
+      },
+      "id": "claude-ocr",
+      "name": "Claude OCR",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst toolUse = response.content.find(b => b.type === 'tool_use');\nconst extracted = toolUse ? toolUse.input : {};\n\nconst webhookData = $('Webhook').first().json.body;\n\nreturn [{\n  json: {\n    record_id:    webhookData.record_id,\n    user_id:      webhookData.user_id,\n    image_path:   webhookData.image_path,\n    merchant:     extracted.merchant || 'Inconnu',\n    amount:       extracted.amount || null,\n    expense_date: extracted.expense_date || new Date().toISOString().split('T')[0],\n    category:     extracted.category || 'Autre',\n    description:  extracted.description || ''\n  }\n}];\n"
+      },
+      "id": "parse-ocr",
+      "name": "Parse OCR Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.GOTENBERG_URL }}/forms/chromium/convert/html",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "multipart/form-data" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "files",
+              "value": "=<!DOCTYPE html><html><head><meta charset='UTF-8'><style>body{font-family:Arial,sans-serif;padding:20px;max-width:600px;margin:auto}.header{background:#1a1a2e;color:white;padding:15px;border-radius:8px;margin-bottom:20px}.field{margin:10px 0;padding:10px;background:#f8f8f8;border-radius:4px;border-left:4px solid #1a1a2e}.label{font-size:11px;color:#666;text-transform:uppercase}.value{font-size:16px;font-weight:bold;margin-top:4px}</style></head><body><div class='header'><h2 style='margin:0'>Note de Frais</h2><p style='margin:4px 0;opacity:0.8'>{{ $json.merchant }}</p></div><div class='field'><div class='label'>Montant TTC</div><div class='value'>{{ $json.amount ? $json.amount.toFixed(2) + ' €' : 'N/A' }}</div></div><div class='field'><div class='label'>Date</div><div class='value'>{{ $json.expense_date }}</div></div><div class='field'><div class='label'>Catégorie</div><div class='value'>{{ $json.category }}</div></div>{{ $json.description ? '<div class=\"field\"><div class=\"label\">Description</div><div class=\"value\">' + $json.description + '</div></div>' : '' }}</body></html>",
+              "parameterType": "formBinaryData",
+              "inputDataFieldName": "html_content"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "generate-pdf",
+      "name": "Generate PDF (Gotenberg)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/storage/v1/object/expense-scans/{{ $('Parse OCR Result').first().json.user_id }}/pdfs/{{ $('Parse OCR Result').first().json.expense_date.replace(/-/g,'') }}_{{ $('Parse OCR Result').first().json.merchant.replace(/ /g,'_') }}_{{ Date.now() }}.pdf",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/pdf" },
+            { "name": "x-upsert", "value": "true" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "upload-pdf",
+      "name": "Upload PDF to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const uploadResponse = $input.first().json;\nconst pdfPath = uploadResponse.Key || uploadResponse.key || '';\nreturn [{ json: { pdf_path: pdfPath.replace('expense-scans/', '') } }];\n"
+      },
+      "id": "extract-path",
+      "name": "Extract PDF Path",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/expense_scans",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Parse OCR Result').first().json.record_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={\n  \"status\": \"à revoir\",\n  \"pdf_url\": \"{{ $('Extract PDF Path').first().json.pdf_path }}\",\n  \"merchant\": \"{{ $('Parse OCR Result').first().json.merchant }}\",\n  \"amount\": {{ $('Parse OCR Result').first().json.amount }},\n  \"expense_date\": \"{{ $('Parse OCR Result').first().json.expense_date }}\",\n  \"category\": \"{{ $('Parse OCR Result').first().json.category }}\",\n  \"notes\": \"{{ $('Parse OCR Result').first().json.description }}\"\n}",
+        "options": {}
+      },
+      "id": "update-scan",
+      "name": "Update Expense Scan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Get Image Signed URL", "type": "main", "index": 0 }]]
+    },
+    "Get Image Signed URL": {
+      "main": [[{ "node": "Download Image", "type": "main", "index": 0 }]]
+    },
+    "Download Image": {
+      "main": [[{ "node": "Claude OCR", "type": "main", "index": 0 }]]
+    },
+    "Claude OCR": {
+      "main": [[{ "node": "Parse OCR Result", "type": "main", "index": 0 }]]
+    },
+    "Parse OCR Result": {
+      "main": [[{ "node": "Generate PDF (Gotenberg)", "type": "main", "index": 0 }]]
+    },
+    "Generate PDF (Gotenberg)": {
+      "main": [[{ "node": "Upload PDF to Supabase", "type": "main", "index": 0 }]]
+    },
+    "Upload PDF to Supabase": {
+      "main": [[{ "node": "Extract PDF Path", "type": "main", "index": 0 }]]
+    },
+    "Extract PDF Path": {
+      "main": [[{ "node": "Update Expense Scan", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "tags": ["factureo", "expense-scans"]
+}

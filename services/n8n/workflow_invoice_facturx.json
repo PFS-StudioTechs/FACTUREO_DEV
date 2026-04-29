@@ -1,0 +1,202 @@
+{
+  "name": "Facturéo — Génération Factur-X",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "invoice-facturx",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "invoice-facturx"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/invoices",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.body.invoice_id }}" },
+            { "name": "select", "value": "*,companies(*),clients(*)" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-invoice",
+      "name": "Fetch Invoice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const row = $input.first().json[0];\nif (!row) throw new Error('Invoice not found');\n\nconst company = row.companies;\nconst client  = row.clients;\n\nreturn [{\n  json: {\n    invoice_id:            row.id,\n    user_id:               row.user_id,\n    numero_facture:        row.numero_facture,\n    date_facturation:      row.date_facturation,\n    date_limite_paiement:  row.date_limite_paiement,\n    designation:           row.designation,\n    descriptif_mission:    row.descriptif_mission,\n    nombre_jours:          row.nombre_jours,\n    tjm:                   row.tjm,\n    montant_ht:            row.montant_ht,\n    taux_tva:              row.taux_tva,\n    montant_tva:           row.montant_tva,\n    montant_ttc:           row.montant_ttc,\n    mode_paiement:         row.mode_paiement,\n    conditions_paiement:   row.conditions_paiement,\n    numero_bon_commande:   row.numero_bon_commande,\n    emetteur: {\n      denomination:          company.denomination,\n      adresse:               company.adresse,\n      code_postal:           company.code_postal,\n      ville:                 company.ville,\n      pays:                  company.pays || 'FR',\n      siret:                 company.siret,\n      tva_intracommunautaire: company.tva_intracommunautaire,\n      code_iban:             company.code_iban,\n      bic_swift:             company.bic_swift,\n      mail:                  company.mail,\n      telephone:             company.telephone\n    },\n    client: {\n      nom:                   client.nom,\n      adresse:               client.adresse,\n      code_postal:           client.code_postal,\n      ville:                 client.ville,\n      pays:                  client.pays || 'FR',\n      siret:                 client.siret || '',\n      tva_intracommunautaire: client.tva_intracommunautaire || '',\n      email:                 client.email || ''\n    }\n  }\n}];\n"
+      },
+      "id": "build-payload",
+      "name": "Build Factur-X Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.FACTURX_SERVICE_URL }}/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Api-Key", "value": "={{ $env.FACTURX_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify($json) }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "call-facturx",
+      "name": "Generate Factur-X PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const invoiceData = $('Build Factur-X Payload').first().json;\nconst fileName = `${invoiceData.user_id}/${invoiceData.numero_facture}.pdf`;\nreturn [{ json: { ...invoiceData, storage_path: fileName } }];\n"
+      },
+      "id": "prepare-upload",
+      "name": "Prepare Storage Path",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/storage/v1/object/invoices/{{ $json.storage_path }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/pdf" },
+            { "name": "x-upsert", "value": "true" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "upload-pdf",
+      "name": "Upload PDF to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/invoices",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $('Build Factur-X Payload').first().json.invoice_id }}" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={ \"status\": \"générée\", \"facturx_url\": \"{{ $('Prepare Storage Path').first().json.storage_path }}\" }",
+        "options": {}
+      },
+      "id": "update-invoice",
+      "name": "Update Invoice Status",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": true, \"invoice_id\": \"{{ $('Build Factur-X Payload').first().json.invoice_id }}\", \"facturx_url\": \"{{ $('Prepare Storage Path').first().json.storage_path }}\" }",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"success\": false, \"error\": \"{{ $json.message }}\" }",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "respond-error",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1780, 480]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Fetch Invoice", "type": "main", "index": 0 }]]
+    },
+    "Fetch Invoice": {
+      "main": [[{ "node": "Build Factur-X Payload", "type": "main", "index": 0 }]]
+    },
+    "Build Factur-X Payload": {
+      "main": [[{ "node": "Generate Factur-X PDF", "type": "main", "index": 0 }]]
+    },
+    "Generate Factur-X PDF": {
+      "main": [[{ "node": "Prepare Storage Path", "type": "main", "index": 0 }]]
+    },
+    "Prepare Storage Path": {
+      "main": [[{ "node": "Upload PDF to Supabase", "type": "main", "index": 0 }]]
+    },
+    "Upload PDF to Supabase": {
+      "main": [[{ "node": "Update Invoice Status", "type": "main", "index": 0 }]]
+    },
+    "Update Invoice Status": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "errorWorkflow": ""
+  },
+  "active": false,
+  "tags": ["factureo", "facturx", "invoices"]
+}

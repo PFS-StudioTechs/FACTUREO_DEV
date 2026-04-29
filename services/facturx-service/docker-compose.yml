@@ -1,0 +1,13 @@
+services:
+  facturx:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    environment:
+      - FACTURX_API_KEY=${FACTURX_API_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

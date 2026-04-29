@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { WEBHOOK_URLS } from "@/lib/config";
+import { WEBHOOK_URLS, N8N_INVOICE_WEBHOOK } from "@/lib/config";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Plus, FileDown, Receipt, CalendarIcon, Trash2, Upload, Loader2, Send, Pencil, ChevronDown, Mic, HelpCircle } from "lucide-react";
+import { Plus, FileDown, Receipt, CalendarIcon, Trash2, Upload, Loader2, Send, Pencil, ChevronDown, Mic, HelpCircle, CheckCircle, Clock, FileCheck } from "lucide-react";
 import { generateInvoicePDF } from "@/lib/pdf-generator";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
@@ -59,6 +59,20 @@ const Invoices = () => {
   const montantHT = tjm * (parseFloat(nombreJours) || 0);
   const montantTVA = montantHT * 0.2;
   const montantTTC = montantHT + montantTVA;
+
+  // Realtime : mise à jour du statut quand n8n a fini la génération Factur-X
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("invoices_status_realtime")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "invoices", filter: `user_id=eq.${user.id}` },
+        () => queryClient.invalidateQueries({ queryKey: ["invoices"] })
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, queryClient]);
 
   const { data: companies = [] } = useQuery({
     queryKey: ["companies", user?.id],
@@ -254,14 +268,15 @@ const Invoices = () => {
     onSuccess: async (invoice) => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
-      toast.success(editingInvoice ? "Facture mise à jour" : "Facture créée avec succès");
+      toast.success(editingInvoice ? "Facture mise à jour" : "Facture créée — génération Factur-X en cours...");
 
-      if (!editingInvoice) {
-        const company = companies.find((c) => c.id === invoice.company_id);
-        const client = clients.find((c) => c.id === invoice.client_id);
-        if (company && client) {
-          generateInvoicePDF(invoice, company, client);
-        }
+      // Déclenche n8n pour générer le PDF Factur-X (création et modification)
+      if (N8N_INVOICE_WEBHOOK) {
+        fetch(N8N_INVOICE_WEBHOOK, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ invoice_id: invoice.id, user_id: invoice.user_id }),
+        }).catch(console.error);
       }
 
       setDialogOpen(false);
@@ -371,7 +386,14 @@ const Invoices = () => {
 
       if (!response.ok) throw new Error(`Erreur webhook: ${response.status}`);
 
-      toast.success("Facture envoyée avec succès via le webhook");
+      // Marquer la facture comme envoyée
+      await supabase
+        .from("invoices")
+        .update({ status: "envoyée", sent_at: new Date().toISOString() })
+        .eq("id", inv.id);
+
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      toast.success("Facture envoyée avec succès");
       setSendDialogOpen(false);
       setRecipientEmail("");
       setCurrentInvoiceToSend(null);
@@ -382,7 +404,21 @@ const Invoices = () => {
     }
   };
 
-  const downloadExistingPDF = async (invoice: Invoice) => {
+  const downloadExistingPDF = async (invoice: any) => {
+    // Priorité : PDF Factur-X dans Supabase Storage
+    if (invoice.facturx_url) {
+      const { data } = await supabase.storage
+        .from("invoices")
+        .createSignedUrl(invoice.facturx_url, 300);
+      if (data?.signedUrl) {
+        const a = document.createElement("a");
+        a.href = data.signedUrl;
+        a.download = `${invoice.numero_facture}.pdf`;
+        a.click();
+        return;
+      }
+    }
+    // Fallback : génération jsPDF locale (anciennes factures sans Factur-X)
     const { data: company } = await supabase.from("companies").select("*").eq("id", invoice.company_id).single();
     const { data: client } = await supabase.from("clients").select("*").eq("id", invoice.client_id).single();
     if (company && client) generateInvoicePDF(invoice, company, client);
@@ -466,6 +502,16 @@ const Invoices = () => {
   };
 
   const fmt = (n: number) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n);
+
+  const StatusBadge = ({ status }: { status?: string }) => {
+    if (!status || status === "brouillon")
+      return <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Clock className="w-3 h-3" />En cours</span>;
+    if (status === "générée")
+      return <span className="inline-flex items-center gap-1 text-xs text-blue-600"><FileCheck className="w-3 h-3" />Factur-X</span>;
+    if (status === "envoyée")
+      return <span className="inline-flex items-center gap-1 text-xs text-green-600"><CheckCircle className="w-3 h-3" />Envoyée</span>;
+    return null;
+  };
 
   return (
     <div className="space-y-6">
@@ -635,6 +681,7 @@ const Invoices = () => {
                 <TableHead>Client</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Montant TTC</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
                 <TableHead className="w-[50px]">PDF</TableHead>
                 <TableHead className="w-[50px]">Envoyer</TableHead>
@@ -648,6 +695,7 @@ const Invoices = () => {
                   <TableCell>{inv.clients?.nom}</TableCell>
                   <TableCell>{new Date(inv.date_facturation).toLocaleDateString("fr-FR")}</TableCell>
                   <TableCell>{fmt(inv.montant_ttc)}</TableCell>
+                  <TableCell><StatusBadge status={inv.status} /></TableCell>
                   <TableCell>
                     <Button variant="ghost" size="icon" onClick={() => openEditInvoice(inv)}>
                       <Pencil className="w-4 h-4" />
