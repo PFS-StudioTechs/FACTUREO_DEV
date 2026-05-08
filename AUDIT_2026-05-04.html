@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Facturéo — Audit d'état du projet</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 13px;
+    color: #1a1a2e;
+    background: #f8f9fc;
+    line-height: 1.6;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    background: white;
+    padding: 48px 56px;
+  }
+
+  /* Header */
+  .header {
+    border-bottom: 3px solid #6366f1;
+    padding-bottom: 24px;
+    margin-bottom: 36px;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .logo-area h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #6366f1;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-area .subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin-top: 4px;
+  }
+
+  .meta-box {
+    background: #f0f0ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    padding: 12px 18px;
+    text-align: right;
+    min-width: 180px;
+  }
+
+  .meta-box .date {
+    font-size: 15px;
+    font-weight: 600;
+    color: #4f46e5;
+  }
+
+  .meta-box .session {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 2px;
+  }
+
+  /* Section */
+  .section {
+    margin-bottom: 36px;
+    page-break-inside: avoid;
+  }
+
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #4f46e5;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 14px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #e0e7ff;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-title .num {
+    background: #6366f1;
+    color: white;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    margin-bottom: 8px;
+  }
+
+  th {
+    background: #f0f0ff;
+    color: #4f46e5;
+    font-weight: 600;
+    text-align: left;
+    padding: 8px 12px;
+    border: 1px solid #e0e7ff;
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  td {
+    padding: 7px 12px;
+    border: 1px solid #e5e7eb;
+    vertical-align: top;
+  }
+
+  tr:nth-child(even) td {
+    background: #fafafa;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 11.5px;
+    background: #f3f4f6;
+    padding: 1px 5px;
+    border-radius: 4px;
+    color: #374151;
+  }
+
+  /* Status badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .badge-ok { background: #dcfce7; color: #166534; }
+  .badge-warn { background: #fef9c3; color: #854d0e; }
+  .badge-ko { background: #fee2e2; color: #991b1b; }
+  .badge-med { background: #fff7ed; color: #9a3412; }
+
+  /* Priority badges */
+  .prio-haute { background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .prio-moy { background: #fef9c3; color: #854d0e; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .prio-basse { background: #f0fdf4; color: #166534; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+
+  /* Summary cards */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .summary-card {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .summary-card.warn {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  }
+
+  .summary-card.ok {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  }
+
+  .summary-card.ko {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  }
+
+  .summary-card .num {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .summary-card .label {
+    font-size: 11px;
+    opacity: 0.9;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  /* Todo boxes */
+  .todo-box {
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    border-left: 4px solid;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .todo-box.blocker {
+    background: #fff1f2;
+    border-color: #ef4444;
+  }
+
+  .todo-box.high {
+    background: #fff7ed;
+    border-color: #f59e0b;
+  }
+
+  .todo-box.medium {
+    background: #fefce8;
+    border-color: #eab308;
+  }
+
+  .todo-box.low {
+    background: #f0fdf4;
+    border-color: #22c55e;
+  }
+
+  .todo-ref {
+    font-weight: 700;
+    font-size: 11px;
+    min-width: 28px;
+    margin-top: 1px;
+  }
+
+  .todo-content .title {
+    font-weight: 600;
+    color: #1a1a2e;
+    font-size: 13px;
+  }
+
+  .todo-content .detail {
+    color: #6b7280;
+    font-size: 11.5px;
+    margin-top: 2px;
+  }
+
+  /* Infra grid */
+  .infra-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .infra-item {
+    background: #f8f9fc;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 10px 14px;
+  }
+
+  .infra-item .key {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .infra-item .value {
+    font-family: 'Consolas', monospace;
+    font-size: 12px;
+    color: #1a1a2e;
+    margin-top: 3px;
+    word-break: break-all;
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+    font-size: 11px;
+    color: #9ca3af;
+    text-align: center;
+  }
+
+  /* Print */
+  @media print {
+    body { background: white; }
+    .page { padding: 24px 32px; max-width: 100%; }
+    .summary-grid { page-break-inside: avoid; }
+    .section { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-top">
+      <div class="logo-area">
+        <h1>Facturéo</h1>
+        <div class="subtitle">Audit d'état du projet — Plateforme de facturation IA pour freelances & TPE</div>
+      </div>
+      <div class="meta-box">
+        <div class="date">2026-05-04</div>
+        <div class="session">Session 5 · Claude Code</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SUMMARY CARDS -->
+  <div class="summary-grid">
+    <div class="summary-card ok">
+      <div class="num">12</div>
+      <div class="label">Pages frontend</div>
+    </div>
+    <div class="summary-card ok">
+      <div class="num">9</div>
+      <div class="label">Edge Functions</div>
+    </div>
+    <div class="summary-card ok">
+      <div class="num">3</div>
+      <div class="label">Workflows n8n actifs</div>
+    </div>
+    <div class="summary-card ko">
+      <div class="num">1</div>
+      <div class="label">Service non déployé</div>
+    </div>
+  </div>
+
+  <!-- SECTION 1 : FRONTEND -->
+  <div class="section">
+    <div class="section-title"><span class="num">1</span> Frontend — Pages React</div>
+    <table>
+      <thead>
+        <tr><th>Page</th><th>Lignes</th><th>Fonctionnalités</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>Auth.tsx</code></td><td>222</td><td>Login · signup · reset password (Supabase Auth)</td></tr>
+        <tr><td><code>Index.tsx</code></td><td>111</td><td>Dashboard — stats globales (entreprises, clients, factures, prévisionnel)</td></tr>
+        <tr><td><code>Companies.tsx</code></td><td>281</td><td>CRUD entreprises · parsing document GPT-4o-mini vision</td></tr>
+        <tr><td><code>CompanyDetail.tsx</code></td><td>255</td><td>Détail / edit · coordonnées bancaires · SIRET · TVA</td></tr>
+        <tr><td><code>Clients.tsx</code></td><td>337</td><td>CRUD clients · parsing contrat (Claude) · TJM · conditions paiement</td></tr>
+        <tr><td><code>Invoices.tsx</code></td><td>795</td><td>Cycle complet · import PDF · dictée vocale · webhook n8n · Factur-X PDF</td></tr>
+        <tr><td><code>InvoiceSettings.tsx</code></td><td>215</td><td>Format de numérotation par entreprise</td></tr>
+        <tr><td><code>ExpenseScans.tsx</code></td><td>535</td><td>Upload · OCR · statuts (traitement / à revoir / transmis) · webhook n8n</td></tr>
+        <tr><td><code>Previsionnel.tsx</code></td><td>493</td><td>Prévisions CA par mois · TJM × jours ouvrés · jours fériés français</td></tr>
+        <tr><td><code>UserManagement.tsx</code></td><td>511</td><td>RBAC admin/user · approbation accès · archivage utilisateurs</td></tr>
+        <tr><td><code>ResetPassword.tsx</code></td><td>124</td><td>Formulaire reset mot de passe (recovery token)</td></tr>
+        <tr><td><code>NotFound.tsx</code></td><td>24</td><td>Page 404</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION 2 : EDGE FUNCTIONS -->
+  <div class="section">
+    <div class="section-title"><span class="num">2</span> Edge Functions Supabase (Deno)</div>
+    <table>
+      <thead>
+        <tr><th>Fonction</th><th>IA utilisée</th><th>Rôle</th><th>État</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>parse-invoice</code></td><td>Claude Haiku</td><td>Extraction données facture depuis PDF / image</td><td><span class="badge badge-ok">✅ OK</span></td></tr>
+        <tr><td><code>parse-company</code></td><td>GPT-4o-mini vision</td><td>Extraction infos entreprise (SIRET, TVA, banque)</td><td><span class="badge badge-ok">✅ OK</span></td></tr>
+        <tr><td><code>parse-contract</code></td><td>Claude</td><td>Parsing contrat — client, TJM, conditions, bon commande</td><td><span class="badge badge-ok">✅ OK</span></td></tr>
+        <tr><td><code>extract-voice-invoice</code></td><td>GPT-4o-mini</td><td>Dictée vocale → données facture structurées</td><td><span class="badge badge-ok">✅ OK</span></td></tr>
+        <tr><td><code>generate-invoice-email</code></td><td>Gemini 2.5 Flash</td><td>Génération email d'envoi de facture</td><td><span class="badge badge-warn">⚠️ Infra tierce</span></td></tr>
+        <tr><td><code>process-expense-scan</code></td><td>GPT-4o-mini vision</td><td>Extraction date + description depuis reçu photo</td><td><span class="badge badge-ok">✅ OK</span></td></tr>
+        <tr><td><code>send-expense-email</code></td><td>SendGrid</td><td>Envoi récapitulatif notes de frais au comptable</td><td><span class="badge badge-ok">✅ OK</span></td></tr>
+        <tr><td><code>notify-admin-new-signup</code></td><td>—</td><td>Notification admin à l'inscription d'un utilisateur</td><td><span class="badge badge-warn">⚠️ Log seulement</span></td></tr>
+        <tr><td><code>notify-user-access</code></td><td>Lovable AI</td><td>Email confirmation accès accordé à l'utilisateur</td><td><span class="badge badge-ok">✅ OK</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION 3 : WORKFLOWS -->
+  <div class="section">
+    <div class="section-title"><span class="num">3</span> Workflows n8n</div>
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Nom</th><th>Déclencheur</th><th>État</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>Iy2o7dCTfUUCDt8L</code></td><td>Génération Factur-X</td><td>Webhook POST <code>/invoice-facturx</code></td><td><span class="badge badge-ok">✅ Actif</span></td></tr>
+        <tr><td><code>oa6nZvdk1U641DvF</code></td><td>Traitement Notes de Frais</td><td>Webhook après upload image</td><td><span class="badge badge-ok">✅ Actif</span></td></tr>
+        <tr><td><code>1XpX8bxMDLCRmZJO</code></td><td>Envoi Hebdo Notes de Frais</td><td>Cron vendredi 17h UTC</td><td><span class="badge badge-ok">✅ Actif</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION 4 : SECURITE -->
+  <div class="section">
+    <div class="section-title"><span class="num">4</span> Sécurité — État des corrections</div>
+    <table>
+      <thead>
+        <tr><th>Ref</th><th>Problème original</th><th>État</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>C1</strong></td><td>CORS <code>*</code> sur toutes les Edge Functions</td><td><span class="badge badge-ok">✅ Corrigé — ALLOWED_ORIGIN env</span></td></tr>
+        <tr><td><strong>C2</strong></td><td>Webhook n8n sans vérification ownership (IDOR)</td><td><span class="badge badge-warn">⚠️ Partiel — pas de HMAC</span></td></tr>
+        <tr><td><strong>C3</strong></td><td><code>API_KEY=""</code> par défaut dans facturx-service</td><td><span class="badge badge-ok">✅ Corrigé — RuntimeError si absent</span></td></tr>
+        <tr><td><strong>C4</strong></td><td>Policy <code>USING (true)</code> sur expense_scans</td><td><span class="badge badge-ok">✅ Corrigé en migration</span></td></tr>
+        <tr><td><strong>H1</strong></td><td>Injection XML dans Factur-X</td><td><span class="badge badge-ok">✅ Corrigé — html.escape partout</span></td></tr>
+        <tr><td><strong>H2</strong></td><td>Aucun rate limiting appels OpenAI / Anthropic</td><td><span class="badge badge-ko">❌ Pas traité</span></td></tr>
+        <tr><td><strong>H3</strong></td><td>Service key Supabase visible dans workflow n8n</td><td><span class="badge badge-ok">✅ Corrigé — variables env n8n</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SECTION 5 : TODO -->
+  <div class="section">
+    <div class="section-title"><span class="num">5</span> Ce qui reste à faire</div>
+
+    <p style="font-weight:600; font-size:12px; color:#6b7280; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:10px;">🔴 Bloquant — Déploiement</p>
+
+    <div class="todo-box blocker">
+      <div class="todo-ref" style="color:#ef4444;">B1</div>
+      <div class="todo-content">
+        <div class="title">Déployer <code>facturx-service</code> sur VPS Hostinger</div>
+        <div class="detail">Transférer 3 fichiers → <code>docker build -t facturx-service .</code> → <code>docker run -d -p 8001:8000 -e FACTURX_API_KEY=facturx_prod_2026_xK9mP --name facturx facturx-service</code></div>
+      </div>
+    </div>
+
+    <div class="todo-box blocker">
+      <div class="todo-ref" style="color:#ef4444;">B2</div>
+      <div class="todo-content">
+        <div class="title">Mettre à jour workflow n8n <code>Iy2o7dCTfUUCDt8L</code></div>
+        <div class="detail">Variable <code>FACTURX_SERVICE_URL</code> = <code>http://srv1631367.hstgr.cloud:8001</code></div>
+      </div>
+    </div>
+
+    <div class="todo-box blocker">
+      <div class="todo-ref" style="color:#ef4444;">B3</div>
+      <div class="todo-content">
+        <div class="title">Tester le flow end-to-end</div>
+        <div class="detail">Créer facture → déclencher webhook → vérifier PDF dans Supabase Storage → vérifier statut "générée" en BDD</div>
+      </div>
+    </div>
+
+    <p style="font-weight:600; font-size:12px; color:#6b7280; text-transform:uppercase; letter-spacing:0.4px; margin:16px 0 10px;">🟠 Sécurité résiduelle</p>
+
+    <div class="todo-box high">
+      <div class="todo-ref" style="color:#f59e0b;">S1</div>
+      <div class="todo-content">
+        <div class="title">Webhook n8n sans HMAC <span class="prio-haute">Haute</span></div>
+        <div class="detail"><code>Invoices.tsx:275</code> — URL prévisible → déclenchement non autorisé possible. Ajouter signature HMAC-SHA256 + validation côté n8n.</div>
+      </div>
+    </div>
+
+    <div class="todo-box medium">
+      <div class="todo-ref" style="color:#eab308;">S2</div>
+      <div class="todo-content">
+        <div class="title"><code>notify-admin-new-signup</code> — pas d'email <span class="prio-moy">Moyenne</span></div>
+        <div class="detail">Edge function ne fait que <code>console.log</code>. Implémenter envoi email réel via SendGrid.</div>
+      </div>
+    </div>
+
+    <div class="todo-box medium">
+      <div class="todo-ref" style="color:#eab308;">S3</div>
+      <div class="todo-content">
+        <div class="title">Aucun rate limiting sur appels IA <span class="prio-moy">Moyenne</span></div>
+        <div class="detail">Risque de dépassement quota OpenAI / Anthropic. Ajouter compteur par utilisateur ou token bucket.</div>
+      </div>
+    </div>
+
+    <p style="font-weight:600; font-size:12px; color:#6b7280; text-transform:uppercase; letter-spacing:0.4px; margin:16px 0 10px;">🟡 Fonctionnalités incomplètes</p>
+
+    <div class="todo-box high">
+      <div class="todo-ref" style="color:#f59e0b;">F1</div>
+      <div class="todo-content">
+        <div class="title">TVA hardcodée à 20% <span class="prio-haute">Haute</span></div>
+        <div class="detail"><code>Invoices.tsx:248</code> — <code>taux_tva: 20</code>. Ajouter sélecteur 5.5% / 10% / 20% dans le formulaire.</div>
+      </div>
+    </div>
+
+    <div class="todo-box medium">
+      <div class="todo-ref" style="color:#eab308;">F2</div>
+      <div class="todo-content">
+        <div class="title"><code>generate-invoice-email</code> — dépendance infra tierce <span class="prio-moy">Moyenne</span></div>
+        <div class="detail">Appel vers <code>ai.gateway.lovable.dev</code> — non maîtrisé. Migrer vers appel direct Claude/OpenAI.</div>
+      </div>
+    </div>
+
+    <div class="todo-box low">
+      <div class="todo-ref" style="color:#22c55e;">F3</div>
+      <div class="todo-content">
+        <div class="title">Unicité numéro de facture non validée <span class="prio-basse">Basse</span></div>
+        <div class="detail"><code>Invoices.tsx:133</code> — <code>invoice_settings.code</code> optionnel, pas de contrainte unicité.</div>
+      </div>
+    </div>
+
+    <p style="font-weight:600; font-size:12px; color:#6b7280; text-transform:uppercase; letter-spacing:0.4px; margin:16px 0 10px;">⚪ Dette technique</p>
+
+    <div class="todo-box low">
+      <div class="todo-ref" style="color:#22c55e;">D1</div>
+      <div class="todo-content">
+        <div class="title"><code>UserManagement</code> — select * sans LIMIT <span class="prio-basse">Basse</span></div>
+        <div class="detail"><code>UserManagement.tsx:45</code> — plafond Supabase = 1000 lignes. Ajouter pagination.</div>
+      </div>
+    </div>
+
+    <div class="todo-box low">
+      <div class="todo-ref" style="color:#22c55e;">D2</div>
+      <div class="todo-content">
+        <div class="title">Liste clients entière passée au prompt vocal <span class="prio-basse">Basse</span></div>
+        <div class="detail"><code>extract-voice-invoice/index.ts</code> — pas de limite de taille. Tronquer à 50 clients max.</div>
+      </div>
+    </div>
+
+    <div class="todo-box low">
+      <div class="todo-ref" style="color:#22c55e;">D3</div>
+      <div class="todo-content">
+        <div class="title">Pas de fichier <code>.env.example</code> <span class="prio-basse">Basse</span></div>
+        <div class="detail">Documenter toutes les variables d'environnement requises.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 6 : INFRA -->
+  <div class="section">
+    <div class="section-title"><span class="num">6</span> Infrastructure</div>
+    <div class="infra-grid">
+      <div class="infra-item"><div class="key">Supabase Project</div><div class="value">dphabbucdbxzmtnewfns</div></div>
+      <div class="infra-item"><div class="key">Frontend (Vercel)</div><div class="value">https://factureo-dev.vercel.app</div></div>
+      <div class="infra-item"><div class="key">n8n (VPS Hostinger)</div><div class="value">https://n8n.srv1631367.hstgr.cloud</div></div>
+      <div class="infra-item"><div class="key">VPS</div><div class="value">srv1631367.hstgr.cloud</div></div>
+      <div class="infra-item"><div class="key">facturx-service (cible)</div><div class="value">http://srv1631367.hstgr.cloud:8001</div></div>
+      <div class="infra-item"><div class="key">Email</div><div class="value">SendGrid (SG.-mYTQ8_7…)</div></div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    Généré par Claude Code · Session 5 · 2026-05-04 · Facturéo v0.5
+  </div>
+
+</div>
+</body>
+</html>

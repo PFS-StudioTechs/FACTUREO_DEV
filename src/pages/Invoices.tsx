@@ -48,6 +48,7 @@ const Invoices = () => {
 
   const [importing, setImporting] = useState(false);
   const [sendingInvoiceId, setSendingInvoiceId] = useState<string | null>(null);
+  const [generatingFacturxId, setGeneratingFacturxId] = useState<string | null>(null);
   const [recipientEmail, setRecipientEmail] = useState("");
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [currentInvoiceToSend, setCurrentInvoiceToSend] = useState<any>(null);
@@ -395,6 +396,43 @@ const Invoices = () => {
     }
   };
 
+  const handleGenerateFacturx = async (inv: any) => {
+    setGeneratingFacturxId(inv.id);
+    try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/generate-facturx`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${currentSession?.access_token ?? ""}`,
+          "apikey": anonKey,
+        },
+        body: JSON.stringify({ invoice_id: inv.id }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: "Erreur inconnue" }));
+        throw new Error(errData.error || `Erreur HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${inv.numero_facture}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PDF Factur-X généré !");
+    } catch (err: any) {
+      toast.error(`Erreur Factur-X : ${err.message}`);
+    } finally {
+      setGeneratingFacturxId(null);
+    }
+  };
+
   const downloadExistingPDF = async (invoice: any) => {
     // Priorité : PDF Factur-X dans Supabase Storage
     if (invoice.facturx_url) {
@@ -675,6 +713,7 @@ const Invoices = () => {
                 <TableHead>Statut</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
                 <TableHead className="w-[50px]">PDF</TableHead>
+                <TableHead className="w-[50px]">Factur-X</TableHead>
                 <TableHead className="w-[50px]">Envoyer</TableHead>
                 {isAdmin && <TableHead className="w-[50px]">Suppr.</TableHead>}
               </TableRow>
@@ -695,6 +734,16 @@ const Invoices = () => {
                   <TableCell>
                     <Button variant="ghost" size="icon" onClick={() => downloadExistingPDF(inv)}>
                       <FileDown className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={generatingFacturxId === inv.id}
+                      onClick={() => handleGenerateFacturx(inv)}
+                    >
+                      {generatingFacturxId === inv.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileCheck className="w-4 h-4" />}
                     </Button>
                   </TableCell>
                   <TableCell>
