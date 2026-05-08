@@ -9,7 +9,7 @@ type Client = Tables<"clients">;
 const fmt = (n: number) =>
   new Intl.NumberFormat("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 
-export function generateInvoicePDF(invoice: Invoice, company: Company, client: Client) {
+function buildInvoiceDoc(invoice: Invoice, company: Company, client: Client): jsPDF {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = 210;
   const margin = 18;
@@ -305,7 +305,11 @@ export function generateInvoicePDF(invoice: Invoice, company: Company, client: C
   const legalLines = doc.splitTextToSize(legalText, contentWidth);
   doc.text(legalLines, margin, y);
 
-  // ====== SAVE via Blob for iframe compatibility ======
+  return doc;
+}
+
+export function generateInvoicePDF(invoice: Invoice, company: Company, client: Client) {
+  const doc = buildInvoiceDoc(invoice, company, client);
   const blob = doc.output("blob");
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -315,4 +319,8 @@ export function generateInvoicePDF(invoice: Invoice, company: Company, client: C
   link.click();
   document.body.removeChild(link);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function generateInvoicePDFBase64(invoice: Invoice, company: Company, client: Client): string {
+  return buildInvoiceDoc(invoice, company, client).output("base64");
 }

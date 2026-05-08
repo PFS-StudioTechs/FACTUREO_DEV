@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { WEBHOOK_URLS, N8N_INVOICE_WEBHOOK } from "@/lib/config";
+import { N8N_INVOICE_WEBHOOK } from "@/lib/config";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -20,7 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Plus, FileDown, Receipt, CalendarIcon, Trash2, Upload, Loader2, Send, Pencil, ChevronDown, Mic, HelpCircle, CheckCircle, Clock, FileCheck } from "lucide-react";
-import { generateInvoicePDF } from "@/lib/pdf-generator";
+import { generateInvoicePDF, generateInvoicePDFBase64 } from "@/lib/pdf-generator";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -29,7 +29,7 @@ type Company = Tables<"companies">;
 type Invoice = Tables<"invoices">;
 
 const Invoices = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, session, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
@@ -274,7 +274,10 @@ const Invoices = () => {
       if (N8N_INVOICE_WEBHOOK) {
         fetch(N8N_INVOICE_WEBHOOK, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token ?? ""}`,
+          },
           body: JSON.stringify({ invoice_id: invoice.id, user_id: invoice.user_id }),
         }).catch(console.error);
       }
@@ -342,49 +345,37 @@ const Invoices = () => {
       const dateFactStr = new Date(inv.date_facturation);
       const moisPrestation = dateFactStr.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
-      const webhookPayload = {
-        numero_facture: inv.numero_facture,
-        date_facturation: inv.date_facturation,
-        date_limite_paiement: inv.date_limite_paiement,
-        mois_prestation: moisPrestation,
-        nombre_jours: inv.nombre_jours,
-        tjm: inv.tjm,
-        montant_ht: inv.montant_ht,
-        taux_tva: inv.taux_tva,
-        montant_tva: inv.montant_tva,
-        montant_ttc: inv.montant_ttc,
-        conditions_paiement: inv.conditions_paiement,
-        mode_paiement: inv.mode_paiement,
-        designation: inv.designation,
-        descriptif_mission: inv.descriptif_mission,
-        numero_bon_commande: inv.numero_bon_commande,
-        client: {
-          nom: client.nom,
-          adresse: client.adresse,
-          code_postal: client.code_postal,
-          ville: client.ville,
-        },
-        entreprise: {
-          denomination: company.denomination,
-          nom_contact: company.nom_contact,
-          mail: company.mail,
-          mail_envoi: company.mail_envoi,
-          telephone: company.telephone,
-          adresse: company.adresse,
-          code_postal: company.code_postal,
-          ville: company.ville,
-          siret: company.siret,
-        },
-        destinataire_email: recipientEmail,
-      };
+      const pdfBase64 = generateInvoicePDFBase64(inv, company, client);
 
-      const response = await fetch(WEBHOOK_URLS.INVOICES, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(webhookPayload),
+      let emailBody = `Bonjour,\n\nVeuillez trouver ci-joint la facture N° ${inv.numero_facture} pour ${moisPrestation}.\n\nCordialement`;
+      try {
+        const { data: emailData } = await supabase.functions.invoke("generate-invoice-email", {
+          body: {
+            invoiceData: {
+              numero_facture: inv.numero_facture,
+              client_nom: client.nom,
+              nom_contact: company.nom_contact,
+              nombre_jours: inv.nombre_jours,
+              montant_ttc: inv.montant_ttc,
+              mois_prestation: moisPrestation,
+              descriptif_mission: inv.descriptif_mission,
+              designation: inv.designation,
+            },
+          },
+        });
+        if (emailData?.emailBody) emailBody = emailData.emailBody;
+      } catch (_) {}
+
+      const { error: sendError } = await supabase.functions.invoke("send-invoice-email", {
+        body: {
+          recipientEmail,
+          fileName: `${inv.numero_facture}.pdf`,
+          pdfBase64,
+          emailBody,
+          invoiceNumber: inv.numero_facture,
+        },
       });
-
-      if (!response.ok) throw new Error(`Erreur webhook: ${response.status}`);
+      if (sendError) throw sendError;
 
       // Marquer la facture comme envoyée
       await supabase

@@ -158,7 +158,7 @@ const ExpenseScans = () => {
         // 2. Créer le record en BDD
         const { data: record, error: insertError } = await supabase
           .from("expense_scans")
-          .insert({ user_id: user.id, image_url: imagePath, file_url: "", status: "traitement" })
+          .insert({ user_id: user.id, image_url: imagePath, file_url: imagePath, status: "traitement" })
           .select()
           .single();
         if (insertError) throw insertError;

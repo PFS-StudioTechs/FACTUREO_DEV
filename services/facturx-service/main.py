@@ -5,6 +5,7 @@ Receives invoice data from n8n, returns a Factur-X PDF/A-3.
 
 from datetime import date, datetime
 from decimal import Decimal
+from html import escape as _he
 from io import BytesIO
 from typing import Optional
 import os
@@ -18,11 +19,13 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_RIGHT, TA_CENTER, TA_LEFT
-from facturx import generate_from_binary
+from facturx import generate_facturx_from_binary
 
 app = FastAPI(title="Factur-X Service", version="1.0.0")
 
-API_KEY = os.environ.get("FACTURX_API_KEY", "")
+API_KEY = os.environ.get("FACTURX_API_KEY")
+if not API_KEY:
+    raise RuntimeError("FACTURX_API_KEY environment variable is required")
 
 
 # ── Pydantic models ──────────────────────────────────────────────────────────
@@ -95,9 +98,9 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
     date_fac = datetime.strptime(d.date_facturation, "%Y-%m-%d").strftime("%Y%m%d")
     date_lim = datetime.strptime(d.date_limite_paiement, "%Y-%m-%d").strftime("%Y%m%d")
 
-    buyer_vat = f"<ram:URIID schemeID='VA'>{c.tva_intracommunautaire}</ram:URIID>" if c.tva_intracommunautaire else ""
-    buyer_siret = f"<ram:ID schemeID='0002'>{c.siret}</ram:ID>" if c.siret else ""
-    order_ref = f"<ram:BuyerOrderReferencedDocument><ram:IssuerAssignedID>{d.numero_bon_commande}</ram:IssuerAssignedID></ram:BuyerOrderReferencedDocument>" if d.numero_bon_commande else ""
+    buyer_vat = f"<ram:URIID schemeID='VA'>{_he(c.tva_intracommunautaire)}</ram:URIID>" if c.tva_intracommunautaire else ""
+    buyer_siret = f"<ram:ID schemeID='0002'>{_he(c.siret)}</ram:ID>" if c.siret else ""
+    order_ref = f"<ram:BuyerOrderReferencedDocument><ram:IssuerAssignedID>{_he(d.numero_bon_commande)}</ram:IssuerAssignedID></ram:BuyerOrderReferencedDocument>" if d.numero_bon_commande else ""
 
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rsm:CrossIndustryInvoice
@@ -112,7 +115,7 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
   </rsm:ExchangedDocumentContext>
 
   <rsm:ExchangedDocument>
-    <ram:ID>{d.numero_facture}</ram:ID>
+    <ram:ID>{_he(d.numero_facture)}</ram:ID>
     <ram:TypeCode>380</ram:TypeCode>
     <ram:IssueDateTime>
       <udt:DateTimeString format="102">{date_fac}</udt:DateTimeString>
@@ -126,8 +129,8 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
         <ram:LineID>1</ram:LineID>
       </ram:AssociatedDocumentLineDocument>
       <ram:SpecifiedTradeProduct>
-        <ram:Name>{d.designation}</ram:Name>
-        <ram:Description>{d.descriptif_mission}</ram:Description>
+        <ram:Name>{_he(d.designation)}</ram:Name>
+        <ram:Description>{_he(d.descriptif_mission)}</ram:Description>
       </ram:SpecifiedTradeProduct>
       <ram:SpecifiedLineTradeAgreement>
         <ram:NetPriceProductTradePrice>
@@ -151,27 +154,27 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
 
     <ram:ApplicableHeaderTradeAgreement>
       <ram:SellerTradeParty>
-        <ram:ID schemeID="0002">{e.siret}</ram:ID>
-        <ram:Name>{e.denomination}</ram:Name>
+        <ram:ID schemeID="0002">{_he(e.siret)}</ram:ID>
+        <ram:Name>{_he(e.denomination)}</ram:Name>
         <ram:SpecifiedTaxRegistration>
-          <ram:ID schemeID="VA">{e.tva_intracommunautaire}</ram:ID>
+          <ram:ID schemeID="VA">{_he(e.tva_intracommunautaire)}</ram:ID>
         </ram:SpecifiedTaxRegistration>
         <ram:PostalTradeAddress>
-          <ram:LineOne>{e.adresse}</ram:LineOne>
-          <ram:PostcodeCode>{e.code_postal}</ram:PostcodeCode>
-          <ram:CityName>{e.ville}</ram:CityName>
-          <ram:CountryID>{e.pays}</ram:CountryID>
+          <ram:LineOne>{_he(e.adresse)}</ram:LineOne>
+          <ram:PostcodeCode>{_he(e.code_postal)}</ram:PostcodeCode>
+          <ram:CityName>{_he(e.ville)}</ram:CityName>
+          <ram:CountryID>{_he(e.pays)}</ram:CountryID>
         </ram:PostalTradeAddress>
       </ram:SellerTradeParty>
       <ram:BuyerTradeParty>
         {buyer_siret}
         {buyer_vat}
-        <ram:Name>{c.nom}</ram:Name>
+        <ram:Name>{_he(c.nom)}</ram:Name>
         <ram:PostalTradeAddress>
-          <ram:LineOne>{c.adresse}</ram:LineOne>
-          <ram:PostcodeCode>{c.code_postal}</ram:PostcodeCode>
-          <ram:CityName>{c.ville}</ram:CityName>
-          <ram:CountryID>{c.pays}</ram:CountryID>
+          <ram:LineOne>{_he(c.adresse)}</ram:LineOne>
+          <ram:PostcodeCode>{_he(c.code_postal)}</ram:PostcodeCode>
+          <ram:CityName>{_he(c.ville)}</ram:CityName>
+          <ram:CountryID>{_he(c.pays)}</ram:CountryID>
         </ram:PostalTradeAddress>
       </ram:BuyerTradeParty>
       {order_ref}
@@ -184,10 +187,10 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
       <ram:SpecifiedTradeSettlementPaymentMeans>
         <ram:TypeCode>30</ram:TypeCode>
         <ram:PayeePartyCreditorFinancialAccount>
-          <ram:IBANID>{e.code_iban}</ram:IBANID>
+          <ram:IBANID>{_he(e.code_iban)}</ram:IBANID>
         </ram:PayeePartyCreditorFinancialAccount>
         <ram:PayeeSpecifiedCreditorFinancialInstitution>
-          <ram:BICID>{e.bic_swift}</ram:BICID>
+          <ram:BICID>{_he(e.bic_swift)}</ram:BICID>
         </ram:PayeeSpecifiedCreditorFinancialInstitution>
       </ram:SpecifiedTradeSettlementPaymentMeans>
       <ram:ApplicableTradeTax>
@@ -373,14 +376,14 @@ async def generate_facturx(
     data: InvoiceData,
     x_api_key: Optional[str] = Header(default=None),
 ):
-    if API_KEY and x_api_key != API_KEY:
+    if x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
     try:
         pdf_bytes = build_pdf(data)
         xml_bytes = build_facturx_xml(data)
 
-        facturx_pdf = generate_from_binary(
+        facturx_pdf = generate_facturx_from_binary(
             pdf_bytes,
             xml_bytes,
             check_xsd=True,

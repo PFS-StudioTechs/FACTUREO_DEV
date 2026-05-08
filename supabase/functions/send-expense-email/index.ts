@@ -1,10 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 type ScanItem = {
   id: string;
@@ -16,6 +11,7 @@ type ScanItem = {
 };
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -24,11 +20,11 @@ serve(async (req) => {
     const { scans }: { scans: ScanItem[] } = await req.json();
     if (!scans || scans.length === 0) throw new Error("No scans provided");
 
-    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const SENDGRID_API_KEY = Deno.env.get("SENDGRID_API_KEY");
     const ACCOUNTANT_EMAIL = Deno.env.get("ACCOUNTANT_EMAIL");
     const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "notes-de-frais@factureo.fr";
 
-    if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
+    if (!SENDGRID_API_KEY) throw new Error("SENDGRID_API_KEY not configured");
     if (!ACCOUNTANT_EMAIL) throw new Error("ACCOUNTANT_EMAIL not configured");
 
     // Build email body
@@ -61,28 +57,27 @@ Les pièces justificatives (PDF) sont accessibles via les liens joints.
 
 Cordialement`;
 
-    // Build attachments list as links in the body (Resend free tier doesn't support attachments via URL)
     const linksSection =
       "\n\nLiens des justificatifs :\n" +
       scans.map((s, i) => `${i + 1}. ${s.pdf_url}`).join("\n");
 
-    const res = await fetch("https://api.resend.com/emails", {
+    const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
+        Authorization: `Bearer ${SENDGRID_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: FROM_EMAIL,
-        to: [ACCOUNTANT_EMAIL],
+        personalizations: [{ to: [{ email: ACCOUNTANT_EMAIL }] }],
+        from: { email: FROM_EMAIL },
         subject: `Notes de frais — ${scans.length} justificatif(s)`,
-        text: emailBody + linksSection,
+        content: [{ type: "text/plain", value: emailBody + linksSection }],
       }),
     });
 
     if (!res.ok) {
       const err = await res.text();
-      throw new Error(`Resend error: ${res.status} — ${err}`);
+      throw new Error(`SendGrid error: ${res.status} — ${err}`);
     }
 
     return new Response(
