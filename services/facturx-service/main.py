@@ -98,9 +98,9 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
     date_fac = datetime.strptime(d.date_facturation, "%Y-%m-%d").strftime("%Y%m%d")
     date_lim = datetime.strptime(d.date_limite_paiement, "%Y-%m-%d").strftime("%Y%m%d")
 
-    buyer_vat = f"<ram:URIID schemeID='VA'>{_he(c.tva_intracommunautaire)}</ram:URIID>" if c.tva_intracommunautaire else ""
-    buyer_siret = f"<ram:ID schemeID='0002'>{_he(c.siret)}</ram:ID>" if c.siret else ""
-    order_ref = f"<ram:BuyerOrderReferencedDocument><ram:IssuerAssignedID>{_he(d.numero_bon_commande)}</ram:IssuerAssignedID></ram:BuyerOrderReferencedDocument>" if d.numero_bon_commande else ""
+    buyer_id  = f"\n        <ram:ID schemeID='0002'>{_he(c.siret)}</ram:ID>" if c.siret else ""
+    buyer_vat = f"\n        <ram:SpecifiedTaxRegistration><ram:ID schemeID='VA'>{_he(c.tva_intracommunautaire)}</ram:ID></ram:SpecifiedTaxRegistration>" if c.tva_intracommunautaire else ""
+    order_ref = f"\n      <ram:BuyerOrderReferencedDocument><ram:IssuerAssignedID>{_he(d.numero_bon_commande)}</ram:IssuerAssignedID></ram:BuyerOrderReferencedDocument>" if d.numero_bon_commande else ""
 
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rsm:CrossIndustryInvoice
@@ -130,7 +130,6 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
       </ram:AssociatedDocumentLineDocument>
       <ram:SpecifiedTradeProduct>
         <ram:Name>{_he(d.designation)}</ram:Name>
-        <ram:Description>{_he(d.descriptif_mission)}</ram:Description>
       </ram:SpecifiedTradeProduct>
       <ram:SpecifiedLineTradeAgreement>
         <ram:NetPriceProductTradePrice>
@@ -156,28 +155,25 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
       <ram:SellerTradeParty>
         <ram:ID schemeID="0002">{_he(e.siret)}</ram:ID>
         <ram:Name>{_he(e.denomination)}</ram:Name>
-        <ram:SpecifiedTaxRegistration>
-          <ram:ID schemeID="VA">{_he(e.tva_intracommunautaire)}</ram:ID>
-        </ram:SpecifiedTaxRegistration>
         <ram:PostalTradeAddress>
-          <ram:LineOne>{_he(e.adresse)}</ram:LineOne>
           <ram:PostcodeCode>{_he(e.code_postal)}</ram:PostcodeCode>
+          <ram:LineOne>{_he(e.adresse)}</ram:LineOne>
           <ram:CityName>{_he(e.ville)}</ram:CityName>
           <ram:CountryID>{_he(e.pays)}</ram:CountryID>
         </ram:PostalTradeAddress>
+        <ram:SpecifiedTaxRegistration>
+          <ram:ID schemeID="VA">{_he(e.tva_intracommunautaire)}</ram:ID>
+        </ram:SpecifiedTaxRegistration>
       </ram:SellerTradeParty>
-      <ram:BuyerTradeParty>
-        {buyer_siret}
-        {buyer_vat}
+      <ram:BuyerTradeParty>{buyer_id}
         <ram:Name>{_he(c.nom)}</ram:Name>
         <ram:PostalTradeAddress>
-          <ram:LineOne>{_he(c.adresse)}</ram:LineOne>
           <ram:PostcodeCode>{_he(c.code_postal)}</ram:PostcodeCode>
+          <ram:LineOne>{_he(c.adresse)}</ram:LineOne>
           <ram:CityName>{_he(c.ville)}</ram:CityName>
           <ram:CountryID>{_he(c.pays)}</ram:CountryID>
-        </ram:PostalTradeAddress>
-      </ram:BuyerTradeParty>
-      {order_ref}
+        </ram:PostalTradeAddress>{buyer_vat}
+      </ram:BuyerTradeParty>{order_ref}
     </ram:ApplicableHeaderTradeAgreement>
 
     <ram:ApplicableHeaderTradeDelivery/>
@@ -189,9 +185,6 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
         <ram:PayeePartyCreditorFinancialAccount>
           <ram:IBANID>{_he(e.code_iban)}</ram:IBANID>
         </ram:PayeePartyCreditorFinancialAccount>
-        <ram:PayeeSpecifiedCreditorFinancialInstitution>
-          <ram:BICID>{_he(e.bic_swift)}</ram:BICID>
-        </ram:PayeeSpecifiedCreditorFinancialInstitution>
       </ram:SpecifiedTradeSettlementPaymentMeans>
       <ram:ApplicableTradeTax>
         <ram:CalculatedAmount>{d.montant_tva:.2f}</ram:CalculatedAmount>
@@ -387,8 +380,6 @@ async def generate_facturx(
             pdf_bytes,
             xml_bytes,
             check_xsd=True,
-            flavor="factur-x",
-            level="basic",
         )
 
         return Response(
