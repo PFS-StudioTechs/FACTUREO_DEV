@@ -19,8 +19,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { Plus, FileDown, Receipt, CalendarIcon, Trash2, Upload, Loader2, Send, Pencil, ChevronDown, Mic, HelpCircle, CheckCircle, Clock, FileCheck } from "lucide-react";
-import { generateInvoicePDF, generateInvoicePDFBase64 } from "@/lib/pdf-generator";
+import { Plus, Receipt, CalendarIcon, Trash2, Upload, Loader2, Send, Pencil, ChevronDown, Mic, HelpCircle, CheckCircle, Clock, FileCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -346,7 +345,28 @@ const Invoices = () => {
       const dateFactStr = new Date(inv.date_facturation);
       const moisPrestation = dateFactStr.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
 
-      const pdfBase64 = generateInvoicePDFBase64(inv, company, client);
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+
+      const facturxRes = await fetch(`${supabaseUrl}/functions/v1/generate-facturx`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${currentSession?.access_token ?? ""}`,
+          "apikey": anonKey,
+        },
+        body: JSON.stringify({ invoice_id: inv.id }),
+      });
+      if (!facturxRes.ok) {
+        const errData = await facturxRes.json().catch(() => ({ error: "Erreur inconnue" }));
+        throw new Error(errData.error || `Erreur génération Factur-X`);
+      }
+      const arrayBuffer = await facturxRes.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      let binary = "";
+      for (let i = 0; i < uint8Array.length; i++) binary += String.fromCharCode(uint8Array[i]);
+      const pdfBase64 = btoa(binary);
 
       let emailBody = `Bonjour,\n\nVeuillez trouver ci-joint la facture N° ${inv.numero_facture} pour ${moisPrestation}.\n\nCordialement`;
       try {
@@ -433,25 +453,6 @@ const Invoices = () => {
     }
   };
 
-  const downloadExistingPDF = async (invoice: any) => {
-    // Priorité : PDF Factur-X dans Supabase Storage
-    if (invoice.facturx_url) {
-      const { data } = await supabase.storage
-        .from("invoices")
-        .createSignedUrl(invoice.facturx_url, 300);
-      if (data?.signedUrl) {
-        const a = document.createElement("a");
-        a.href = data.signedUrl;
-        a.download = `${invoice.numero_facture}.pdf`;
-        a.click();
-        return;
-      }
-    }
-    // Fallback : génération jsPDF locale (anciennes factures sans Factur-X)
-    const { data: company } = await supabase.from("companies").select("*").eq("id", invoice.company_id).single();
-    const { data: client } = await supabase.from("clients").select("*").eq("id", invoice.client_id).single();
-    if (company && client) generateInvoicePDF(invoice, company, client);
-  };
 
   const startVoiceRecording = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -712,7 +713,6 @@ const Invoices = () => {
                 <TableHead>Montant TTC</TableHead>
                 <TableHead>Statut</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
-                <TableHead className="w-[50px]">PDF</TableHead>
                 <TableHead className="w-[50px]">Factur-X</TableHead>
                 <TableHead className="w-[50px]">Envoyer</TableHead>
                 {isAdmin && <TableHead className="w-[50px]">Suppr.</TableHead>}
@@ -729,11 +729,6 @@ const Invoices = () => {
                   <TableCell>
                     <Button variant="ghost" size="icon" onClick={() => openEditInvoice(inv)}>
                       <Pencil className="w-4 h-4" />
-                    </Button>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" onClick={() => downloadExistingPDF(inv)}>
-                      <FileDown className="w-4 h-4" />
                     </Button>
                   </TableCell>
                   <TableCell>
