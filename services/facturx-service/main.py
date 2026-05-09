@@ -19,7 +19,7 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_RIGHT, TA_CENTER, TA_LEFT
-from facturx import generate_facturx_from_binary
+from facturx import generate_from_binary
 
 app = FastAPI(title="Factur-X Service", version="1.0.0")
 
@@ -376,14 +376,25 @@ async def generate_facturx(
         pdf_bytes = build_pdf(data)
         xml_bytes = build_facturx_xml(data)
 
-        facturx_pdf = generate_facturx_from_binary(
+        facturx_pdf = generate_from_binary(
             pdf_bytes,
             xml_bytes,
+            flavor="factur-x",
+            level="basic",
             check_xsd=False,
+            check_schematron=False,
+            xmp_compression=False,
         )
 
+        if hasattr(facturx_pdf, "getvalue"):
+            content = facturx_pdf.getvalue()
+        elif isinstance(facturx_pdf, bytes):
+            content = facturx_pdf
+        else:
+            content = bytes(facturx_pdf)
+
         return Response(
-            content=facturx_pdf,
+            content=content,
             media_type="application/pdf",
             headers={
                 "Content-Disposition": f'attachment; filename="{data.numero_facture}.pdf"',
