@@ -26,6 +26,7 @@ export type Database = {
           mode_paiement: string
           nom: string
           numero_bon_commande: string
+          siret: string | null
           tjm: number
           updated_at: string
           user_id: string
@@ -42,6 +43,7 @@ export type Database = {
           mode_paiement?: string
           nom?: string
           numero_bon_commande?: string
+          siret?: string | null
           tjm?: number
           updated_at?: string
           user_id: string
@@ -58,6 +60,7 @@ export type Database = {
           mode_paiement?: string
           nom?: string
           numero_bon_commande?: string
+          siret?: string | null
           tjm?: number
           updated_at?: string
           user_id?: string

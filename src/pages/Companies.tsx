@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { toast } from "sonner";
 import { Plus, Building2, HelpCircle, Upload, Loader2 } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+import SiretLookupField from "@/components/ui/SiretLookupField";
 
 type Company = Tables<"companies">;
 
@@ -70,6 +71,11 @@ const Companies = () => {
       const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
       if (form.mail && !emailRegex.test(form.mail)) throw new Error("Adresse mail invalide");
       if (form.mail_envoi && !emailRegex.test(form.mail_envoi)) throw new Error("Adresse mail d'envoi invalide");
+
+      if (form.siret) {
+        const { data: dup } = await supabase.from("companies").select("id").eq("siret", form.siret).eq("user_id", user!.id).maybeSingle();
+        if (dup) throw new Error("Une entreprise avec ce SIRET existe déjà");
+      }
 
       const { error } = await supabase.from("companies").insert({ ...form, user_id: user!.id });
       if (error) throw error;
@@ -222,16 +228,30 @@ const Companies = () => {
                         </Tooltip>
                       )}
                     </div>
-                    <Input
-                      id={field.key}
-                      type={field.type || "text"}
-                      value={form[field.key]}
-                      onChange={(e) => handleFieldChange(field.key, e.target.value)}
-                      placeholder={field.placeholder}
-                      pattern={field.type === "email" ? "[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}" : field.key === "telephone" ? "[\\d+]*" : undefined}
-                      title={field.type === "email" ? "Veuillez saisir une adresse email valide" : field.key === "telephone" ? "Uniquement des chiffres" : undefined}
-                      inputMode={field.key === "telephone" ? "tel" : undefined}
-                    />
+                    {field.key === "siret" ? (
+                      <SiretLookupField
+                        value={form.siret}
+                        onChange={(v) => setForm({ ...form, siret: v })}
+                        onResolved={(d) => setForm((prev) => ({
+                          ...prev,
+                          denomination: prev.denomination || d.denomination,
+                          adresse: prev.adresse || d.adresse,
+                          code_postal: prev.code_postal || d.code_postal,
+                          ville: prev.ville || d.ville,
+                        }))}
+                      />
+                    ) : (
+                      <Input
+                        id={field.key}
+                        type={field.type || "text"}
+                        value={form[field.key]}
+                        onChange={(e) => handleFieldChange(field.key, e.target.value)}
+                        placeholder={field.placeholder}
+                        pattern={field.type === "email" ? "[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}" : field.key === "telephone" ? "[\\d+]*" : undefined}
+                        title={field.type === "email" ? "Veuillez saisir une adresse email valide" : field.key === "telephone" ? "Uniquement des chiffres" : undefined}
+                        inputMode={field.key === "telephone" ? "tel" : undefined}
+                      />
+                    )}
                   </div>
                 </div>
               ))}

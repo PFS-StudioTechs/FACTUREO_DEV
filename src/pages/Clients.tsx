@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Users, Upload, FileText, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Tables } from "@/integrations/supabase/types";
+import SiretLookupField from "@/components/ui/SiretLookupField";
 
 type Client = Tables<"clients">;
 
@@ -26,7 +27,7 @@ const Clients = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState({
-    nom: "", adresse: "", ville: "", code_postal: "", numero_bon_commande: "",
+    siret: "", nom: "", adresse: "", ville: "", code_postal: "", numero_bon_commande: "",
     tjm: "", descriptif_mission: "", conditions_paiement: "30", mode_paiement: "VIREMENT",
   });
 
@@ -62,7 +63,13 @@ const Clients = () => {
       const condNum = parseInt(form.conditions_paiement);
       if (isNaN(condNum)) throw new Error("Les conditions de paiement doivent être numériques");
 
+      if (form.siret && !editingClient) {
+        const { data: dup } = await supabase.from("clients").select("id").eq("siret", form.siret).eq("user_id", user!.id).maybeSingle();
+        if (dup) throw new Error("Un client avec ce SIRET existe déjà");
+      }
+
       const payload = {
+        siret: form.siret || null,
         nom: form.nom,
         adresse: form.adresse,
         ville: form.ville,
@@ -109,7 +116,7 @@ const Clients = () => {
   const openEdit = (client: Client) => {
     setEditingClient(client);
     setForm({
-      nom: client.nom, adresse: client.adresse, ville: client.ville, code_postal: client.code_postal,
+      siret: client.siret ?? "", nom: client.nom, adresse: client.adresse, ville: client.ville, code_postal: client.code_postal,
       numero_bon_commande: client.numero_bon_commande, tjm: String(client.tjm),
       descriptif_mission: client.descriptif_mission, conditions_paiement: String(client.conditions_paiement),
       mode_paiement: client.mode_paiement,
@@ -120,7 +127,7 @@ const Clients = () => {
   const closeDialog = () => {
     setDialogOpen(false);
     setEditingClient(null);
-    setForm({ nom: "", adresse: "", ville: "", code_postal: "", numero_bon_commande: "", tjm: "", descriptif_mission: "", conditions_paiement: "30", mode_paiement: "VIREMENT" });
+    setForm({ siret: "", nom: "", adresse: "", ville: "", code_postal: "", numero_bon_commande: "", tjm: "", descriptif_mission: "", conditions_paiement: "30", mode_paiement: "VIREMENT" });
   };
 
   const handleTjmChange = (value: string) => {
@@ -178,6 +185,7 @@ const Clients = () => {
       if (result.success && result.data) {
         const d = result.data;
         setForm({
+          siret: "",
           nom: d.nom || "",
           adresse: d.adresse || "",
           ville: d.ville || "",
@@ -248,6 +256,20 @@ const Clients = () => {
                 <DialogTitle>{editingClient ? "Modifier le client" : "Nouveau client"}</DialogTitle>
               </DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-4">
+                <div className="space-y-1">
+                  <Label>SIRET</Label>
+                  <SiretLookupField
+                    value={form.siret}
+                    onChange={(v) => setForm({ ...form, siret: v })}
+                    onResolved={(d) => setForm((prev) => ({
+                      ...prev,
+                      nom: prev.nom || d.nom,
+                      adresse: prev.adresse || d.adresse,
+                      code_postal: prev.code_postal || d.code_postal,
+                      ville: prev.ville || d.ville,
+                    }))}
+                  />
+                </div>
                 <div className="space-y-1"><Label>Nom</Label><Input value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} required /></div>
                 <div className="space-y-1"><Label>Adresse</Label><Input value={form.adresse} onChange={(e) => setForm({ ...form, adresse: e.target.value })} /></div>
                 <div className="grid grid-cols-2 gap-3">
