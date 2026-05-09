@@ -387,16 +387,25 @@ const Invoices = () => {
         if (emailData?.emailBody) emailBody = emailData.emailBody;
       } catch (_) {}
 
-      const { error: sendError } = await supabase.functions.invoke("send-invoice-email", {
-        body: {
+      const sendRes = await fetch(`${supabaseUrl}/functions/v1/send-invoice-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${currentSession?.access_token ?? ""}`,
+          "apikey": anonKey,
+        },
+        body: JSON.stringify({
           recipientEmail,
           fileName: `${inv.numero_facture}.pdf`,
           pdfBase64,
           emailBody,
           invoiceNumber: inv.numero_facture,
-        },
+        }),
       });
-      if (sendError) throw sendError;
+      if (!sendRes.ok) {
+        const errData = await sendRes.json().catch(() => ({ error: "Erreur inconnue" }));
+        throw new Error(errData.error || `Erreur envoi (${sendRes.status})`);
+      }
 
       // Marquer la facture comme envoyée
       await supabase
