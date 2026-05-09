@@ -1,4 +1,4 @@
-"""
+﻿"""
 Factur-X BASIC generation service.
 Receives invoice data from n8n, returns a Factur-X PDF/A-3.
 """
@@ -86,7 +86,7 @@ def fmt_date(iso: str) -> str:
     return datetime.strptime(iso, "%Y-%m-%d").strftime("%d/%m/%Y")
 
 def fmt_amount(v: float) -> str:
-    return f"{v:,.2f} €".replace(",", " ")
+    return f"{v:,.2f} €".replace(",", " ")
 
 
 # ── XML CII (Factur-X BASIC) ─────────────────────────────────────────────────
