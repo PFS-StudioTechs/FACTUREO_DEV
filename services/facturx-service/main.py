@@ -379,7 +379,7 @@ async def generate_facturx(
         facturx_pdf = generate_facturx_from_binary(
             pdf_bytes,
             xml_bytes,
-            check_xsd=True,
+            check_xsd=False,
         )
 
         return Response(
