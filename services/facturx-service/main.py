@@ -19,7 +19,107 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_RIGHT, TA_CENTER, TA_LEFT
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+import re as _re
+import pikepdf
 from facturx import generate_from_binary
+
+# ── Font registration (embedded TTF required for PDF/A-3 compliance) ──────────
+
+pdfmetrics.registerFont(TTFont(
+    'LiberationSans',
+    '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
+))
+pdfmetrics.registerFont(TTFont(
+    'LiberationSans-Bold',
+    '/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf',
+))
+pdfmetrics.registerFontFamily(
+    'LiberationSans',
+    normal='LiberationSans',
+    bold='LiberationSans-Bold',
+)
+
+# ── sRGB output intent (required for PDF/A-3 with DeviceRGB colors) ───────────
+
+_SRGB_ICC_PATH: str | None = None
+for _p in [
+    '/usr/share/color/icc/colord/sRGB.icc',
+    '/usr/share/color/icc/sRGB.icc',
+    '/app/sRGB.icc',
+]:
+    if os.path.exists(_p):
+        _SRGB_ICC_PATH = _p
+        break
+
+
+def _fix_font_references(pdf: pikepdf.Pdf) -> None:
+    """Replace non-embedded Helvetica (F1) font refs in content streams with embedded LiberationSans."""
+    for page in pdf.pages:
+        resources = page.get('/Resources')
+        if resources is None:
+            continue
+        fonts = resources.get('/Font')
+        if fonts is None or fonts.get('/F1') is None:
+            continue
+        ls_name_bytes = None
+        for key, fref in fonts.items():
+            try:
+                fo = pdf.get_object(fref.objgen)
+                base = str(fo.get('/BaseFont', ''))
+                subtype = str(fo.get('/Subtype', ''))
+                if 'TrueType' in subtype and 'LiberationSans' in base and 'Bold' not in base:
+                    ls_name_bytes = str(key).lstrip('/').encode()
+                    break
+            except Exception:
+                continue
+        if ls_name_bytes is None:
+            continue
+        contents = page.get('/Contents')
+        if contents is None:
+            continue
+        def _rewrite(s: pikepdf.Stream) -> None:
+            data = s.read_bytes()
+            new_data = _re.sub(
+                rb'/F1(\s+[\d.]+\s+Tf)',
+                lambda m: b'/' + ls_name_bytes + m.group(1),
+                data,
+            )
+            if new_data != data:
+                s.write(new_data)
+        if hasattr(contents, 'objgen'):
+            _rewrite(pdf.get_object(contents.objgen))
+        else:
+            for c in contents:
+                _rewrite(pdf.get_object(c.objgen))
+        del fonts['/F1']
+
+
+def _add_output_intent(pdf_bytes: bytes) -> bytes:
+    if not _SRGB_ICC_PATH:
+        return pdf_bytes
+    with pikepdf.open(BytesIO(pdf_bytes)) as pdf:
+        _fix_font_references(pdf)
+        with open(_SRGB_ICC_PATH, 'rb') as f:
+            icc_data = f.read()
+        icc_stream = pikepdf.Stream(pdf, icc_data)
+        icc_stream['/N'] = 3
+        icc_stream['/Alternate'] = pikepdf.Name('/DeviceRGB')
+        oi = pikepdf.Dictionary(
+            Type=pikepdf.Name('/OutputIntent'),
+            S=pikepdf.Name('/GTS_PDFA1'),
+            OutputConditionIdentifier='sRGB IEC61966-2.1',
+            RegistryName='http://www.color.org',
+            Info='sRGB IEC61966-2.1',
+            DestOutputProfile=icc_stream,
+        )
+        if '/OutputIntents' not in pdf.Root:
+            pdf.Root['/OutputIntents'] = pikepdf.Array()
+        pdf.Root['/OutputIntents'].append(oi)
+        out = BytesIO()
+        pdf.save(out, linearize=False)
+        return out.getvalue()
 
 app = FastAPI(title="Factur-X Service", version="1.0.0")
 
@@ -225,17 +325,19 @@ def build_pdf(d: InvoiceData) -> bytes:
         topMargin=20 * mm,
         bottomMargin=20 * mm,
     )
+    doc._font = 'LiberationSans'
+    doc._fontsize = 9
 
     styles = getSampleStyleSheet()
     normal = styles["Normal"]
-    normal.fontName = "Helvetica"
+    normal.fontName = "LiberationSans"
     normal.fontSize = 9
 
-    title_style = ParagraphStyle("title", fontName="Helvetica-Bold", fontSize=18, textColor=colors.HexColor("#1a1a2e"))
-    label_style = ParagraphStyle("label", fontName="Helvetica-Bold", fontSize=8, textColor=colors.HexColor("#666666"))
-    value_style = ParagraphStyle("value", fontName="Helvetica", fontSize=9)
-    right_style = ParagraphStyle("right", fontName="Helvetica", fontSize=9, alignment=TA_RIGHT)
-    right_bold = ParagraphStyle("right_bold", fontName="Helvetica-Bold", fontSize=10, alignment=TA_RIGHT)
+    title_style = ParagraphStyle("title", fontName="LiberationSans-Bold", fontSize=18, textColor=colors.HexColor("#1a1a2e"))
+    label_style = ParagraphStyle("label", fontName="LiberationSans-Bold", fontSize=8, textColor=colors.HexColor("#666666"))
+    value_style = ParagraphStyle("value", fontName="LiberationSans", fontSize=9)
+    right_style = ParagraphStyle("right", fontName="LiberationSans", fontSize=9, alignment=TA_RIGHT)
+    right_bold = ParagraphStyle("right_bold", fontName="LiberationSans-Bold", fontSize=10, alignment=TA_RIGHT)
 
     e = d.emetteur
     c = d.client
@@ -245,11 +347,11 @@ def build_pdf(d: InvoiceData) -> bytes:
     header_data = [
         [
             Paragraph(f"<b>{e.denomination}</b>", title_style),
-            Paragraph(f"FACTURE", ParagraphStyle("fac", fontName="Helvetica-Bold", fontSize=22, alignment=TA_RIGHT, textColor=colors.HexColor("#1a1a2e"))),
+            Paragraph(f"FACTURE", ParagraphStyle("fac", fontName="LiberationSans-Bold", fontSize=22, alignment=TA_RIGHT, textColor=colors.HexColor("#1a1a2e"))),
         ],
         [
             Paragraph(f"{e.adresse}<br/>{e.code_postal} {e.ville}<br/>{e.telephone}<br/>{e.mail}", value_style),
-            Paragraph(f"N° {d.numero_facture}", ParagraphStyle("num", fontName="Helvetica", fontSize=11, alignment=TA_RIGHT)),
+            Paragraph(f"N° {d.numero_facture}", ParagraphStyle("num", fontName="LiberationSans", fontSize=11, alignment=TA_RIGHT)),
         ],
     ]
     header_table = Table(header_data, colWidths=[95 * mm, 80 * mm])
@@ -302,7 +404,8 @@ def build_pdf(d: InvoiceData) -> bytes:
     lines_table.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTNAME", (0, 0), (-1, -1), "LiberationSans"),
+        ("FONTNAME", (0, 0), (-1, 0), "LiberationSans-Bold"),
         ("FONTSIZE", (0, 0), (-1, 0), 9),
         ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -325,7 +428,8 @@ def build_pdf(d: InvoiceData) -> bytes:
     totals_table = Table(totals, colWidths=[120 * mm, 55 * mm])
     totals_table.setStyle(TableStyle([
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-        ("FONTNAME", (0, 2), (-1, 2), "Helvetica-Bold"),
+        ("FONTNAME", (0, 0), (-1, -1), "LiberationSans"),
+        ("FONTNAME", (0, 2), (-1, 2), "LiberationSans-Bold"),
         ("FONTSIZE", (0, 2), (-1, 2), 11),
         ("BACKGROUND", (0, 2), (-1, 2), colors.HexColor("#1a1a2e")),
         ("TEXTCOLOR", (0, 2), (-1, 2), colors.white),
@@ -355,7 +459,7 @@ def build_pdf(d: InvoiceData) -> bytes:
     story.append(Paragraph(
         f"SIRET : {e.siret} — TVA : {e.tva_intracommunautaire} — "
         "En cas de retard de paiement, des pénalités de retard seront appliquées au taux légal en vigueur.",
-        ParagraphStyle("legal", fontName="Helvetica", fontSize=7, textColor=colors.HexColor("#888888"))
+        ParagraphStyle("legal", fontName="LiberationSans", fontSize=7, textColor=colors.HexColor("#888888"))
     ))
 
     doc.build(story)
@@ -392,6 +496,8 @@ async def generate_facturx(
             content = facturx_pdf
         else:
             content = bytes(facturx_pdf)
+
+        content = _add_output_intent(content)
 
         return Response(
             content=content,
