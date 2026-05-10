@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:vercel.com)",
+      "Bash(pip show *)",
+      "Bash(npm list *)",
+      "Bash(npm search *)",
+      "Bash(npm info *)",
+      "Bash(cat vercel.json)",
+      "Bash(ls -la .vercel)",
+      "Bash(vercel --version)",
+      "Bash(git log *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git branch *)",
+      "Read(//tmp/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\kstee\\.claude",
+      "C:\\Users\\kstee\\AppData\\Local\\Temp"
+    ]
+  }
+}

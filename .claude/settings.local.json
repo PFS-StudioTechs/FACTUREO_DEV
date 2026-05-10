@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(npx supabase *)",
+      "Bash(supabase functions *)",
+      "Bash(supabase db *)",
+      "Bash(supabase secrets *)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/.bin/vite build *)",
+      "Bash(npx tsc *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(echo *)",
+      "Bash(grep *)",
+      "PowerShell(*Posh-SSH*)",
+      "PowerShell(*New-SSHSession*)",
+      "PowerShell(*Invoke-SSHCommand*)",
+      "PowerShell(*Set-SCPItem*)",
+      "PowerShell(*Remove-SSHSession*)",
+      "PowerShell(*Import-Module Posh-SSH*)"
+    ]
+  }
+}
