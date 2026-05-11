@@ -2,13 +2,8 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Settings } from "lucide-react";
+import { Button } from "@/components/ui/primitives";
 
 const InvoiceSettings = () => {
   const { user } = useAuth();
@@ -34,10 +29,7 @@ const InvoiceSettings = () => {
   const { data: settings } = useQuery({
     queryKey: ["invoice-settings", selectedCompanyId],
     queryFn: async () => {
-      const { data } = await supabase.from("invoice_settings")
-        .select("*")
-        .eq("company_id", selectedCompanyId)
-        .single();
+      const { data } = await supabase.from("invoice_settings").select("*").eq("company_id", selectedCompanyId).single();
       return data;
     },
     enabled: !!selectedCompanyId,
@@ -52,12 +44,8 @@ const InvoiceSettings = () => {
       setSuffixDateFormat(settings.suffix_date_format || "none");
       setSeparator(settings.separator || "none");
     } else {
-      setPrefix("");
-      setCode("");
-      setNumeroFormat("001");
-      setNextNumber(1);
-      setSuffixDateFormat("none");
-      setSeparator("-");
+      setPrefix(""); setCode(""); setNumeroFormat("001"); setNextNumber(1);
+      setSuffixDateFormat("none"); setSeparator("-");
     }
   }, [settings]);
 
@@ -83,16 +71,11 @@ const InvoiceSettings = () => {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
-        company_id: selectedCompanyId,
-        user_id: user!.id,
-        prefix,
-        code,
-        numero_format: numeroFormat,
-        next_number: nextNumber,
+        company_id: selectedCompanyId, user_id: user!.id, prefix, code,
+        numero_format: numeroFormat, next_number: nextNumber,
         suffix_date_format: suffixDateFormat === "none" ? "" : suffixDateFormat,
         separator: separator === "none" ? "" : separator,
       };
-
       if (settings) {
         const { error } = await supabase.from("invoice_settings").update(payload).eq("id", settings.id);
         if (error) throw error;
@@ -108,104 +91,117 @@ const InvoiceSettings = () => {
     onError: (err: Error) => toast.error(err.message),
   });
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Paramétrage</h1>
-        <p className="text-muted-foreground">Configurez le format de numérotation de vos factures</p>
-      </div>
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '8px 12px', background: 'var(--bg-3)',
+    border: '1px solid var(--border)', borderRadius: 'var(--r-3)',
+    color: 'var(--text-1)', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+  };
 
-      <div className="max-w-xl space-y-6">
-        <div className="space-y-1">
-          <Label>Entreprise</Label>
-          <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-            <SelectTrigger><SelectValue placeholder="Sélectionner une entreprise" /></SelectTrigger>
-            <SelectContent>
-              {companies.map((c) => <SelectItem key={c.id} value={c.id}>{c.denomination}</SelectItem>)}
-            </SelectContent>
-          </Select>
+  const selectStyle: React.CSSProperties = {
+    width: '100%', padding: '8px 12px', background: 'var(--bg-3)',
+    border: '1px solid var(--border)', borderRadius: 'var(--r-3)',
+    color: 'var(--text-1)', fontSize: 13, outline: 'none', cursor: 'pointer',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 12, fontWeight: 500, color: 'var(--text-2)', display: 'block', marginBottom: 6,
+  };
+
+  const hintStyle: React.CSSProperties = {
+    fontSize: 11, color: 'var(--text-3)', marginTop: 4,
+  };
+
+  const Field = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
+    <div>
+      <span style={labelStyle}>{label}</span>
+      {children}
+      {hint && <p style={hintStyle}>{hint}</p>}
+    </div>
+  );
+
+  return (
+    <div style={{ padding: '24px', overflowY: 'auto', height: '100%' }}>
+      <div style={{ maxWidth: 560 }}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-1)', margin: '0 0 6px', letterSpacing: '-0.02em' }}>Paramétrage</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-3)', margin: 0 }}>Configurez le format de numérotation de vos factures</p>
         </div>
 
+        <Field label="Entreprise">
+          <select value={selectedCompanyId} onChange={e => setSelectedCompanyId(e.target.value)} style={selectStyle}>
+            <option value="">Sélectionner une entreprise</option>
+            {companies.map(c => <option key={c.id} value={c.id}>{c.denomination}</option>)}
+          </select>
+        </Field>
+
         {selectedCompanyId && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Settings className="w-5 h-5" />Format de numérotation</CardTitle>
-              <CardDescription>Définissez le format de vos numéros de facture</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1">
-                <Label>Préfixe (optionnel)</Label>
-                <Input value={prefix} onChange={(e) => setPrefix(e.target.value)} placeholder="ex: Facture, FACT" />
-                <p className="text-xs text-muted-foreground">Mot clé placé en début de numéro, suivi du séparateur</p>
+          <div style={{ marginTop: 20, background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-4)', overflow: 'hidden' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>Format de numérotation</span>
+            </div>
+            <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <Field label="Préfixe (optionnel)" hint="Mot clé placé en début de numéro, suivi du séparateur">
+                <input style={inputStyle} value={prefix} onChange={e => setPrefix(e.target.value)} placeholder="ex: Facture, FACT" />
+              </Field>
+
+              <Field label="Séparateur">
+                <select style={selectStyle} value={separator} onChange={e => setSeparator(e.target.value)}>
+                  <option value="-">Tiret (-)</option>
+                  <option value="/">Slash (/)</option>
+                  <option value="_">Underscore (_)</option>
+                  <option value=".">Point (.)</option>
+                  <option value="none">Aucun</option>
+                </select>
+              </Field>
+
+              <Field label="Code personnalisé (optionnel)" hint="Collé directement devant le numéro, sans séparateur — ex : Facture_KSD0031">
+                <input style={inputStyle} value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="ex: KSD, AB, 2024" maxLength={10} />
+              </Field>
+
+              <Field label="Format du numéro (nombre de chiffres)">
+                <select style={selectStyle} value={numeroFormat} onChange={e => setNumeroFormat(e.target.value)}>
+                  <option value="01">2 chiffres (01, 02…)</option>
+                  <option value="001">3 chiffres (001, 002…)</option>
+                  <option value="0001">4 chiffres (0001, 0002…)</option>
+                  <option value="00001">5 chiffres (00001, 00002…)</option>
+                </select>
+              </Field>
+
+              <Field label="Prochain numéro">
+                <input style={inputStyle} type="number" min={1} value={nextNumber} onChange={e => setNextNumber(parseInt(e.target.value) || 1)} />
+              </Field>
+
+              <Field label="Suffixe date (optionnel)">
+                <select style={selectStyle} value={suffixDateFormat} onChange={e => setSuffixDateFormat(e.target.value)}>
+                  <option value="none">Aucun</option>
+                  <option value="MM/AAAA">MM/AAAA</option>
+                  <option value="JJ/MM/AAAA">JJ/MM/AAAA</option>
+                  <option value="AAAA">AAAA</option>
+                  <option value="MMAAAA">MMAAAA</option>
+                  <option value="AAAAMM">AAAAMM</option>
+                  <option value="JJMMAAAA">JJMMAAAA</option>
+                  <option value="AAAAMMJJ">AAAAMMJJ</option>
+                </select>
+              </Field>
+
+              {/* Preview */}
+              <div style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 'var(--r-3)', padding: '14px 16px' }}>
+                <p style={{ fontSize: 11, color: 'var(--text-3)', margin: '0 0 6px' }}>Aperçu du prochain numéro :</p>
+                <p style={{ fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--accent-bright)', margin: 0 }}>
+                  {previewNumber()}
+                </p>
               </div>
 
-              <div className="space-y-1">
-                <Label>Séparateur</Label>
-                <Select value={separator} onValueChange={setSeparator}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="-">Tiret (-)</SelectItem>
-                    <SelectItem value="/">Slash (/)</SelectItem>
-                    <SelectItem value="_">Underscore (_)</SelectItem>
-                    <SelectItem value=".">Point (.)</SelectItem>
-                    <SelectItem value="none">Aucun</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label>Code personnalisé (optionnel)</Label>
-                <Input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="ex: KSD, AB, 2024" maxLength={10} />
-                <p className="text-xs text-muted-foreground">Collé directement devant le numéro, sans séparateur — ex : <span className="font-medium">Facture_KSD0031</span></p>
-              </div>
-
-              <div className="space-y-1">
-                <Label>Format du numéro (nombre de chiffres)</Label>
-                <Select value={numeroFormat} onValueChange={setNumeroFormat}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="01">2 chiffres (01, 02...)</SelectItem>
-                    <SelectItem value="001">3 chiffres (001, 002...)</SelectItem>
-                    <SelectItem value="0001">4 chiffres (0001, 0002...)</SelectItem>
-                    <SelectItem value="00001">5 chiffres (00001, 00002...)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label>Prochain numéro</Label>
-                <Input type="number" min={1} value={nextNumber} onChange={(e) => setNextNumber(parseInt(e.target.value) || 1)} />
-              </div>
-
-              <div className="space-y-1">
-                <Label>Suffixe date (optionnel)</Label>
-                <Select value={suffixDateFormat} onValueChange={setSuffixDateFormat}>
-                  <SelectTrigger><SelectValue placeholder="Aucun suffixe" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Aucun</SelectItem>
-                    <SelectItem value="MM/AAAA">MM/AAAA</SelectItem>
-                    <SelectItem value="JJ/MM/AAAA">JJ/MM/AAAA</SelectItem>
-                    <SelectItem value="AAAA">AAAA</SelectItem>
-                    <SelectItem value="MMAAAA">MMAAAA</SelectItem>
-                    <SelectItem value="AAAAMM">AAAAMM</SelectItem>
-                    <SelectItem value="JJMMAAAA">JJMMAAAA</SelectItem>
-                    <SelectItem value="AAAAMMJJ">AAAAMMJJ</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Card className="bg-muted/50">
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground">Aperçu du prochain numéro :</p>
-                  <p className="text-2xl font-bold mt-1">{previewNumber()}</p>
-                </CardContent>
-              </Card>
-
-              <Button onClick={() => saveMutation.mutate()} className="w-full" disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? "Enregistrement..." : "Enregistrer le paramétrage"}
+              <Button
+                variant="primary"
+                onClick={() => saveMutation.mutate()}
+                disabled={saveMutation.isPending}
+                style={{ width: '100%', justifyContent: 'center' }}
+              >
+                {saveMutation.isPending ? "Enregistrement…" : "Enregistrer le paramétrage"}
               </Button>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </div>
     </div>

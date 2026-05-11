@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import AppLayout from "@/components/AppLayout";
+import AppShell from "@/components/layout/AppShell";
 import Auth from "@/pages/Auth";
 import Index from "@/pages/Index";
 import Companies from "@/pages/Companies";
@@ -46,7 +46,7 @@ const ProtectedRoutes = () => {
     );
   }
 
-  return <AppLayout />;
+  return <AppShell />;
 };
 
 const AuthRoute = () => {

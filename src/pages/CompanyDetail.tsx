@@ -3,15 +3,15 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { ArrowLeft, Pencil, Trash2, HelpCircle } from "lucide-react";
+import { HelpCircle } from "lucide-react";
+import { Button } from "@/components/ui/primitives";
+import { Icon } from "@/components/ui/Icon";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Company = Tables<"companies">;
@@ -47,6 +47,26 @@ const fields: { key: keyof typeof emptyCompany; label: string; section?: string;
 
 const sanitizePhone = (value: string) => value.replace(/[^\d+]/g, "");
 
+const InfoRow = ({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, padding: '4px 0' }}>
+    <span style={{ fontSize: 12, color: 'var(--text-3)', flexShrink: 0 }}>{label}</span>
+    <span style={{ fontSize: 13, color: 'var(--text-1)', textAlign: 'right', wordBreak: 'break-word', maxWidth: '60%', fontFamily: mono ? 'var(--font-mono)' : 'inherit' }}>
+      {value || '—'}
+    </span>
+  </div>
+);
+
+const SectionCard = ({ title, items }: { title: string; items: { label: string; value?: string | null; mono?: boolean }[] }) => (
+  <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-4)', overflow: 'hidden' }}>
+    <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+      {title}
+    </div>
+    <div style={{ padding: '8px 18px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {items.map(item => <InfoRow key={item.label} {...item} />)}
+    </div>
+  </div>
+);
+
 const CompanyDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -75,11 +95,9 @@ const CompanyDetail = () => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // Validate email fields
       const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
       if (form.mail && !emailRegex.test(form.mail)) throw new Error("Adresse mail invalide");
       if (form.mail_envoi && !emailRegex.test(form.mail_envoi)) throw new Error("Adresse mail d'envoi invalide");
-
       const { error } = await supabase.from("companies").update(form).eq("id", id!);
       if (error) throw error;
     },
@@ -106,107 +124,110 @@ const CompanyDetail = () => {
   });
 
   const handleFieldChange = (key: string, value: string) => {
-    if (key === "telephone") {
-      setForm({ ...form, [key]: sanitizePhone(value) });
-    } else {
-      setForm({ ...form, [key]: value });
-    }
+    setForm({ ...form, [key]: key === "telephone" ? sanitizePhone(value) : value });
   };
 
-  if (isLoading) return <p className="text-muted-foreground p-6">Chargement...</p>;
-  if (!company) return <p className="text-muted-foreground p-6">Entreprise introuvable</p>;
-
-  const infoSections = [
-    {
-      title: "Informations générales",
-      items: [
-        { label: "Dénomination", value: company.denomination },
-        { label: "Forme juridique", value: company.forme_juridique },
-        { label: "Capital", value: company.capital },
-        { label: "Désignation", value: company.designation },
-        { label: "Nom du contact", value: company.nom_contact },
-        { label: "Adresse", value: `${company.adresse}, ${company.code_postal} ${company.ville}` },
-        { label: "Téléphone", value: company.telephone },
-        { label: "Mail", value: company.mail },
-        { label: "Mail d'envoi", value: company.mail_envoi },
-        { label: "SIRET", value: company.siret },
-        { label: "RCS / RM", value: company.rcs_rm_ville },
-        { label: "Code NAF", value: company.code_naf },
-        { label: "TVA Intracom.", value: company.tva_intracommunautaire },
-      ],
-    },
-    {
-      title: "Coordonnées Bancaires",
-      items: [
-        { label: "Titulaire", value: company.banque_titulaire },
-        { label: "Banque", value: company.banque_nom },
-        { label: "Adresse Banque", value: company.banque_adresse },
-        { label: "BIC / SWIFT", value: company.bic_swift },
-        { label: "IBAN", value: company.code_iban },
-      ],
-    },
-  ];
+  if (isLoading) return (
+    <div style={{ padding: 24, color: 'var(--text-3)', fontSize: 13 }}>Chargement…</div>
+  );
+  if (!company) return (
+    <div style={{ padding: 24, color: 'var(--text-3)', fontSize: 13 }}>Entreprise introuvable</div>
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/entreprises")}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">{company.denomination || "Sans nom"}</h1>
-          <p className="text-muted-foreground">{company.forme_juridique} {company.capital ? `au capital de ${company.capital}` : ""}</p>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Breadcrumb + header */}
+      <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+          <button
+            onClick={() => navigate('/entreprises')}
+            style={{ fontSize: 12, color: 'var(--text-3)', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-1)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-3)'; }}
+          >
+            Entreprises
+          </button>
+          <Icon name="chevronRight" size={12} color="var(--text-3)" />
+          <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{company.denomination || 'Sans nom'}</span>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={openEdit}>
-            <Pencil className="w-4 h-4 mr-2" />Modifier
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive">
-                <Trash2 className="w-4 h-4 mr-2" />Supprimer
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Supprimer cette entreprise ?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  L'entreprise « {company.denomination} » sera définitivement supprimée. Cette action est irréversible.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Supprimer
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <button
+            onClick={() => navigate('/entreprises')}
+            style={{ width: 32, height: 32, borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-2)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-3)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-2)'; }}
+          >
+            <Icon name="arrowRight" size={14} style={{ transform: 'rotate(180deg)' }} />
+          </button>
+          <div style={{ flex: 1 }}>
+            <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em' }}>
+              {company.denomination || 'Sans nom'}
+            </h1>
+            <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '3px 0 0' }}>
+              {[company.forme_juridique, company.capital ? `au capital de ${company.capital}` : ''].filter(Boolean).join(' ') || '—'}
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button variant="ghost" size="sm" icon="edit" onClick={openEdit}>Modifier</Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="danger" size="sm" icon="trash">Supprimer</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Supprimer cette entreprise ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    L'entreprise « {company.denomination} » sera définitivement supprimée. Cette action est irréversible.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => deleteMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Supprimer
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {infoSections.map((section) => (
-          <Card key={section.title}>
-            <CardHeader>
-              <CardTitle className="text-lg">{section.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="space-y-3">
-                {section.items.map((item) => (
-                  <div key={item.label} className="flex justify-between text-sm">
-                    <dt className="text-muted-foreground">{item.label}</dt>
-                    <dd className="font-medium text-right max-w-[60%] break-words">{item.value || "—"}</dd>
-                  </div>
-                ))}
-              </dl>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Content */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <SectionCard
+            title="Identité"
+            items={[
+              { label: "Dénomination", value: company.denomination },
+              { label: "Forme juridique", value: company.forme_juridique },
+              { label: "Capital", value: company.capital },
+              { label: "Désignation", value: company.designation },
+              { label: "Contact / dirigeant", value: company.nom_contact },
+              { label: "Adresse", value: [company.adresse, company.code_postal, company.ville].filter(Boolean).join(', ') },
+              { label: "Téléphone", value: company.telephone },
+              { label: "Mail", value: company.mail },
+              { label: "Mail d'envoi", value: company.mail_envoi },
+              { label: "SIRET", value: company.siret, mono: true },
+              { label: "RCS / RM", value: company.rcs_rm_ville },
+              { label: "Code NAF", value: company.code_naf, mono: true },
+              { label: "TVA Intracom.", value: company.tva_intracommunautaire, mono: true },
+            ]}
+          />
+          <SectionCard
+            title="Coordonnées bancaires"
+            items={[
+              { label: "Titulaire", value: company.banque_titulaire },
+              { label: "Banque", value: company.banque_nom },
+              { label: "Adresse banque", value: company.banque_adresse },
+              { label: "BIC / SWIFT", value: company.bic_swift, mono: true },
+              { label: "IBAN", value: company.code_iban, mono: true },
+            ]}
+          />
+        </div>
       </div>
 
       {/* Edit dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) setDialogOpen(false); }}>
+      <Dialog open={dialogOpen} onOpenChange={open => { if (!open) setDialogOpen(false); }}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Modifier l'entreprise</DialogTitle>
@@ -214,19 +235,12 @@ const CompanyDetail = () => {
           <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-6">
             {fields.map((field) => (
               <div key={field.key}>
-                {field.section && (
-                  <h3 className="text-lg font-semibold mb-3 mt-2 border-b pb-2">{field.section}</h3>
-                )}
+                {field.section && <h3 className="text-lg font-semibold mb-3 mt-2 border-b pb-2">{field.section}</h3>}
                 <div className="space-y-1">
                   <div className="flex items-center gap-1">
                     <Label htmlFor={field.key}>{field.label}</Label>
                     {field.tooltip && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>{field.tooltip}</TooltipContent>
-                      </Tooltip>
+                      <Tooltip><TooltipTrigger asChild><HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent>{field.tooltip}</TooltipContent></Tooltip>
                     )}
                   </div>
                   <Input
@@ -242,9 +256,17 @@ const CompanyDetail = () => {
                 </div>
               </div>
             ))}
-            <Button type="submit" className="w-full" disabled={saveMutation.isPending}>
+            <button
+              type="submit"
+              disabled={saveMutation.isPending}
+              style={{
+                width: '100%', padding: '10px', background: 'var(--accent)', color: 'var(--accent-on)',
+                border: 'none', borderRadius: 'var(--r-3)', fontWeight: 500, fontSize: 14, cursor: 'pointer',
+                opacity: saveMutation.isPending ? 0.7 : 1,
+              }}
+            >
               {saveMutation.isPending ? "Enregistrement..." : "Enregistrer"}
-            </Button>
+            </button>
           </form>
         </DialogContent>
       </Dialog>
