@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { N8N_INVOICE_WEBHOOK } from "@/lib/config";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -125,9 +124,6 @@ const Invoices = () => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success(editingInvoice ? "Facture mise à jour" : "Facture créée — génération Factur-X en cours…");
-      if (N8N_INVOICE_WEBHOOK) {
-        fetch(N8N_INVOICE_WEBHOOK, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token ?? ""}` }, body: JSON.stringify({ invoice_id: invoice.id, user_id: invoice.user_id }) }).catch(console.error);
-      }
       setModalOpen(false); setEditingInvoice(null);
     },
     onError: (err: Error) => toast.error(err.message),
