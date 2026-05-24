@@ -1,10 +1,9 @@
-﻿"""
+"""
 Factur-X BASIC generation service.
-Receives invoice data from n8n, returns a Factur-X PDF/A-3.
+Receives invoice data from Supabase Edge Function, returns a Factur-X PDF/A-3.
 """
 
-from datetime import date, datetime
-from decimal import Decimal
+from datetime import datetime
 from html import escape as _he
 from io import BytesIO
 from typing import Optional
@@ -25,7 +24,7 @@ import re as _re
 import pikepdf
 from facturx import generate_from_binary
 
-# ── Font registration (embedded TTF required for PDF/A-3 compliance) ──────────
+# ── Font registration ─────────────────────────────────────────────────────────
 
 pdfmetrics.registerFont(TTFont(
     'LiberationSans',
@@ -41,7 +40,7 @@ pdfmetrics.registerFontFamily(
     bold='LiberationSans-Bold',
 )
 
-# ── sRGB output intent (required for PDF/A-3 with DeviceRGB colors) ───────────
+# ── sRGB output intent ────────────────────────────────────────────────────────
 
 _SRGB_ICC_PATH: str | None = None
 for _p in [
@@ -55,7 +54,6 @@ for _p in [
 
 
 def _fix_font_references(pdf: pikepdf.Pdf) -> None:
-    """Replace non-embedded Helvetica (F1) font refs in content streams with embedded LiberationSans."""
     for page in pdf.pages:
         resources = page.get('/Resources')
         if resources is None:
@@ -121,14 +119,15 @@ def _add_output_intent(pdf_bytes: bytes) -> bytes:
         pdf.save(out, linearize=False)
         return out.getvalue()
 
-app = FastAPI(title="Factur-X Service", version="1.0.0")
+
+app = FastAPI(title="Factur-X Service", version="2.0.0")
 
 API_KEY = os.environ.get("FACTURX_API_KEY")
 if not API_KEY:
     raise RuntimeError("FACTURX_API_KEY environment variable is required")
 
 
-# ── Pydantic models ──────────────────────────────────────────────────────────
+# ── Pydantic models ───────────────────────────────────────────────────────────
 
 class Emetteur(BaseModel):
     denomination: str
@@ -153,43 +152,65 @@ class Client(BaseModel):
     tva_intracommunautaire: str = ""
     email: str = ""
 
+class InvoiceLine(BaseModel):
+    designation: str
+    quantite: float
+    unite: str = "Jour"
+    prix_unitaire_ht: float
+    remise: float = 0
+    taux_tva: float = 20
+    motif_exoneration: str = ""
+    montant_ht: float
+    montant_tva: float
+    montant_ttc: float
+
 class InvoiceData(BaseModel):
-    # Identifiants
     invoice_id: str
     user_id: str
     numero_facture: str
-    date_facturation: str          # YYYY-MM-DD
-    date_limite_paiement: str      # YYYY-MM-DD
-    # Parties
+    date_facturation: str
+    date_limite_paiement: str
     emetteur: Emetteur
     client: Client
-    # Lignes
-    designation: str
-    descriptif_mission: str
-    nombre_jours: float
-    tjm: float
-    # Totaux
+    # Legacy single-line fields (None when lines present)
+    designation: Optional[str] = None
+    descriptif_mission: Optional[str] = None
+    nombre_jours: Optional[float] = None
+    tjm: Optional[float] = None
+    # Totals
     montant_ht: float
-    taux_tva: float
+    taux_tva: Optional[float] = 20
     montant_tva: float
     montant_ttc: float
     # Paiement
     mode_paiement: str = "VIREMENT"
     conditions_paiement: int = 30
     numero_bon_commande: str = ""
+    # Multi-line
+    lines: Optional[list[InvoiceLine]] = None
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+UNIT_CODES: dict[str, str] = {
+    'Jour': 'DAY', 'Heure': 'HUR', 'Unité': 'C62', 'Forfait': 'C62',
+    'kg': 'KGM', 'm': 'MTR', 'm²': 'MTK', 'm³': 'MTQ', 'l': 'LTR',
+}
 
 def fmt_date(iso: str) -> str:
-    """2026-04-29 → 29/04/2026"""
     return datetime.strptime(iso, "%Y-%m-%d").strftime("%d/%m/%Y")
 
 def fmt_amount(v: float) -> str:
-    return f"{v:,.2f} €".replace(",", " ")
+    return f"{v:,.2f} €".replace(",", " ")
+
+def _unit_code(unite: str) -> str:
+    return UNIT_CODES.get(unite, 'C62')
+
+def _tva_category(rate: float) -> str:
+    return 'S' if rate > 0 else 'E'
 
 
-# ── XML CII (Factur-X BASIC) ─────────────────────────────────────────────────
+# ── XML CII (Factur-X BASIC) ──────────────────────────────────────────────────
 
 def build_facturx_xml(d: InvoiceData) -> bytes:
     e = d.emetteur
@@ -201,6 +222,47 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
     buyer_id  = f"\n        <ram:ID schemeID='0002'>{_he(c.siret)}</ram:ID>" if c.siret else ""
     buyer_vat = f"\n        <ram:SpecifiedTaxRegistration><ram:ID schemeID='VA'>{_he(c.tva_intracommunautaire)}</ram:ID></ram:SpecifiedTaxRegistration>" if c.tva_intracommunautaire else ""
     order_ref = f"\n      <ram:BuyerOrderReferencedDocument><ram:IssuerAssignedID>{_he(d.numero_bon_commande)}</ram:IssuerAssignedID></ram:BuyerOrderReferencedDocument>" if d.numero_bon_commande else ""
+
+    if d.lines:
+        line_items_xml = _build_line_items_xml(d.lines)
+        tva_xml = _build_tva_xml_from_lines(d.lines)
+    else:
+        tva_rate = d.taux_tva or 20
+        line_items_xml = f"""
+    <ram:IncludedSupplyChainTradeLineItem>
+      <ram:AssociatedDocumentLineDocument>
+        <ram:LineID>1</ram:LineID>
+      </ram:AssociatedDocumentLineDocument>
+      <ram:SpecifiedTradeProduct>
+        <ram:Name>{_he(d.designation or '')}</ram:Name>
+      </ram:SpecifiedTradeProduct>
+      <ram:SpecifiedLineTradeAgreement>
+        <ram:NetPriceProductTradePrice>
+          <ram:ChargeAmount>{d.tjm or 0:.2f}</ram:ChargeAmount>
+        </ram:NetPriceProductTradePrice>
+      </ram:SpecifiedLineTradeAgreement>
+      <ram:SpecifiedLineTradeDelivery>
+        <ram:BilledQuantity unitCode="DAY">{d.nombre_jours or 0:.2f}</ram:BilledQuantity>
+      </ram:SpecifiedLineTradeDelivery>
+      <ram:SpecifiedLineTradeSettlement>
+        <ram:ApplicableTradeTax>
+          <ram:TypeCode>VAT</ram:TypeCode>
+          <ram:CategoryCode>S</ram:CategoryCode>
+          <ram:RateApplicablePercent>{tva_rate:.2f}</ram:RateApplicablePercent>
+        </ram:ApplicableTradeTax>
+        <ram:SpecifiedTradeSettlementLineMonetarySummation>
+          <ram:LineTotalAmount>{d.montant_ht:.2f}</ram:LineTotalAmount>
+        </ram:SpecifiedTradeSettlementLineMonetarySummation>
+      </ram:SpecifiedLineTradeSettlement>
+    </ram:IncludedSupplyChainTradeLineItem>"""
+        tva_xml = f"""
+      <ram:ApplicableTradeTax>
+        <ram:CalculatedAmount>{d.montant_tva:.2f}</ram:CalculatedAmount>
+        <ram:TypeCode>VAT</ram:TypeCode>
+        <ram:BasisAmount>{d.montant_ht:.2f}</ram:BasisAmount>
+        <ram:CategoryCode>S</ram:CategoryCode>
+        <ram:RateApplicablePercent>{tva_rate:.2f}</ram:RateApplicablePercent>
+      </ram:ApplicableTradeTax>"""
 
     xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rsm:CrossIndustryInvoice
@@ -223,34 +285,7 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
   </rsm:ExchangedDocument>
 
   <rsm:SupplyChainTradeTransaction>
-
-    <ram:IncludedSupplyChainTradeLineItem>
-      <ram:AssociatedDocumentLineDocument>
-        <ram:LineID>1</ram:LineID>
-      </ram:AssociatedDocumentLineDocument>
-      <ram:SpecifiedTradeProduct>
-        <ram:Name>{_he(d.designation)}</ram:Name>
-      </ram:SpecifiedTradeProduct>
-      <ram:SpecifiedLineTradeAgreement>
-        <ram:NetPriceProductTradePrice>
-          <ram:ChargeAmount>{d.tjm:.2f}</ram:ChargeAmount>
-        </ram:NetPriceProductTradePrice>
-      </ram:SpecifiedLineTradeAgreement>
-      <ram:SpecifiedLineTradeDelivery>
-        <ram:BilledQuantity unitCode="DAY">{d.nombre_jours:.2f}</ram:BilledQuantity>
-      </ram:SpecifiedLineTradeDelivery>
-      <ram:SpecifiedLineTradeSettlement>
-        <ram:ApplicableTradeTax>
-          <ram:TypeCode>VAT</ram:TypeCode>
-          <ram:CategoryCode>S</ram:CategoryCode>
-          <ram:RateApplicablePercent>{d.taux_tva:.2f}</ram:RateApplicablePercent>
-        </ram:ApplicableTradeTax>
-        <ram:SpecifiedTradeSettlementLineMonetarySummation>
-          <ram:LineTotalAmount>{d.montant_ht:.2f}</ram:LineTotalAmount>
-        </ram:SpecifiedTradeSettlementLineMonetarySummation>
-      </ram:SpecifiedLineTradeSettlement>
-    </ram:IncludedSupplyChainTradeLineItem>
-
+{line_items_xml}
     <ram:ApplicableHeaderTradeAgreement>
       <ram:SellerTradeParty>
         <ram:ID schemeID="0002">{_he(e.siret)}</ram:ID>
@@ -286,13 +321,7 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
           <ram:IBANID>{_he(e.code_iban)}</ram:IBANID>
         </ram:PayeePartyCreditorFinancialAccount>
       </ram:SpecifiedTradeSettlementPaymentMeans>
-      <ram:ApplicableTradeTax>
-        <ram:CalculatedAmount>{d.montant_tva:.2f}</ram:CalculatedAmount>
-        <ram:TypeCode>VAT</ram:TypeCode>
-        <ram:BasisAmount>{d.montant_ht:.2f}</ram:BasisAmount>
-        <ram:CategoryCode>S</ram:CategoryCode>
-        <ram:RateApplicablePercent>{d.taux_tva:.2f}</ram:RateApplicablePercent>
-      </ram:ApplicableTradeTax>
+{tva_xml}
       <ram:SpecifiedTradePaymentTerms>
         <ram:DueDateDateTime>
           <udt:DateTimeString format="102">{date_lim}</udt:DateTimeString>
@@ -313,31 +342,84 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
     return xml.strip().encode("utf-8")
 
 
-# ── PDF visuel (ReportLab) ───────────────────────────────────────────────────
+def _build_line_items_xml(lines: list[InvoiceLine]) -> str:
+    result = ""
+    for i, l in enumerate(lines, 1):
+        cat = _tva_category(l.taux_tva)
+        exo = f"\n          <ram:ExemptionReason>{_he(l.motif_exoneration)}</ram:ExemptionReason>" if l.motif_exoneration else ""
+        net_price = l.prix_unitaire_ht * (1 - l.remise / 100)
+        result += f"""
+    <ram:IncludedSupplyChainTradeLineItem>
+      <ram:AssociatedDocumentLineDocument>
+        <ram:LineID>{i}</ram:LineID>
+      </ram:AssociatedDocumentLineDocument>
+      <ram:SpecifiedTradeProduct>
+        <ram:Name>{_he(l.designation)}</ram:Name>
+      </ram:SpecifiedTradeProduct>
+      <ram:SpecifiedLineTradeAgreement>
+        <ram:NetPriceProductTradePrice>
+          <ram:ChargeAmount>{net_price:.2f}</ram:ChargeAmount>
+        </ram:NetPriceProductTradePrice>
+      </ram:SpecifiedLineTradeAgreement>
+      <ram:SpecifiedLineTradeDelivery>
+        <ram:BilledQuantity unitCode="{_unit_code(l.unite)}">{l.quantite:.3f}</ram:BilledQuantity>
+      </ram:SpecifiedLineTradeDelivery>
+      <ram:SpecifiedLineTradeSettlement>
+        <ram:ApplicableTradeTax>
+          <ram:TypeCode>VAT</ram:TypeCode>
+          <ram:CategoryCode>{cat}</ram:CategoryCode>
+          <ram:RateApplicablePercent>{l.taux_tva:.2f}</ram:RateApplicablePercent>{exo}
+        </ram:ApplicableTradeTax>
+        <ram:SpecifiedTradeSettlementLineMonetarySummation>
+          <ram:LineTotalAmount>{l.montant_ht:.2f}</ram:LineTotalAmount>
+        </ram:SpecifiedTradeSettlementLineMonetarySummation>
+      </ram:SpecifiedLineTradeSettlement>
+    </ram:IncludedSupplyChainTradeLineItem>"""
+    return result
+
+
+def _build_tva_xml_from_lines(lines: list[InvoiceLine]) -> str:
+    groups: dict[float, list[float]] = {}
+    for l in lines:
+        if l.taux_tva not in groups:
+            groups[l.taux_tva] = [0.0, 0.0]
+        groups[l.taux_tva][0] += l.montant_ht
+        groups[l.taux_tva][1] += l.montant_tva
+    result = ""
+    for rate in sorted(groups):
+        basis, tva_amt = groups[rate]
+        cat = _tva_category(rate)
+        result += f"""
+      <ram:ApplicableTradeTax>
+        <ram:CalculatedAmount>{tva_amt:.2f}</ram:CalculatedAmount>
+        <ram:TypeCode>VAT</ram:TypeCode>
+        <ram:BasisAmount>{basis:.2f}</ram:BasisAmount>
+        <ram:CategoryCode>{cat}</ram:CategoryCode>
+        <ram:RateApplicablePercent>{rate:.2f}</ram:RateApplicablePercent>
+      </ram:ApplicableTradeTax>"""
+    return result
+
+
+# ── PDF visuel (ReportLab) ────────────────────────────────────────────────────
 
 def build_pdf(d: InvoiceData) -> bytes:
     buf = BytesIO()
     doc = SimpleDocTemplate(
-        buf,
-        pagesize=A4,
-        leftMargin=20 * mm,
-        rightMargin=20 * mm,
-        topMargin=20 * mm,
-        bottomMargin=20 * mm,
+        buf, pagesize=A4,
+        leftMargin=20 * mm, rightMargin=20 * mm,
+        topMargin=20 * mm, bottomMargin=20 * mm,
     )
-    doc._font = 'LiberationSans'
-    doc._fontsize = 9
 
     styles = getSampleStyleSheet()
     normal = styles["Normal"]
     normal.fontName = "LiberationSans"
     normal.fontSize = 9
 
-    title_style = ParagraphStyle("title", fontName="LiberationSans-Bold", fontSize=18, textColor=colors.HexColor("#1a1a2e"))
-    label_style = ParagraphStyle("label", fontName="LiberationSans-Bold", fontSize=8, textColor=colors.HexColor("#666666"))
-    value_style = ParagraphStyle("value", fontName="LiberationSans", fontSize=9)
-    right_style = ParagraphStyle("right", fontName="LiberationSans", fontSize=9, alignment=TA_RIGHT)
-    right_bold = ParagraphStyle("right_bold", fontName="LiberationSans-Bold", fontSize=10, alignment=TA_RIGHT)
+    title_style  = ParagraphStyle("title",  fontName="LiberationSans-Bold", fontSize=18, textColor=colors.HexColor("#1a1a2e"))
+    label_style  = ParagraphStyle("label",  fontName="LiberationSans-Bold", fontSize=8,  textColor=colors.HexColor("#666666"))
+    value_style  = ParagraphStyle("value",  fontName="LiberationSans",      fontSize=9)
+    right_style  = ParagraphStyle("right",  fontName="LiberationSans",      fontSize=9,  alignment=TA_RIGHT)
+    right_bold   = ParagraphStyle("right_bold", fontName="LiberationSans-Bold", fontSize=10, alignment=TA_RIGHT)
 
     e = d.emetteur
     c = d.client
@@ -347,7 +429,7 @@ def build_pdf(d: InvoiceData) -> bytes:
     header_data = [
         [
             Paragraph(f"<b>{e.denomination}</b>", title_style),
-            Paragraph(f"FACTURE", ParagraphStyle("fac", fontName="LiberationSans-Bold", fontSize=22, alignment=TA_RIGHT, textColor=colors.HexColor("#1a1a2e"))),
+            Paragraph("FACTURE", ParagraphStyle("fac", fontName="LiberationSans-Bold", fontSize=22, alignment=TA_RIGHT, textColor=colors.HexColor("#1a1a2e"))),
         ],
         [
             Paragraph(f"{e.adresse}<br/>{e.code_postal} {e.ville}<br/>{e.telephone}<br/>{e.mail}", value_style),
@@ -364,7 +446,7 @@ def build_pdf(d: InvoiceData) -> bytes:
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#e0e0e0")))
     story.append(Spacer(1, 6 * mm))
 
-    # ── Émetteur / Client ──
+    # ── Émetteur / Client / Dates ──
     parties_data = [
         [
             Paragraph("<b>ÉMETTEUR</b>", label_style),
@@ -392,47 +474,38 @@ def build_pdf(d: InvoiceData) -> bytes:
     story.append(parties_table)
     story.append(Spacer(1, 8 * mm))
 
-    # ── Lignes de facturation ──
-    col_headers = ["Description", "Qté (j)", "TJM (€/j)", "Total HT"]
-    rows = [col_headers, [
-        Paragraph(f"<b>{d.designation}</b><br/><font size='8' color='#555555'>{d.descriptif_mission}</font>", value_style),
-        f"{d.nombre_jours:.2f}",
-        fmt_amount(d.tjm),
-        fmt_amount(d.montant_ht),
-    ]]
-    lines_table = Table(rows, colWidths=[90 * mm, 22 * mm, 30 * mm, 33 * mm])
-    lines_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, -1), "LiberationSans"),
-        ("FONTNAME", (0, 0), (-1, 0), "LiberationSans-Bold"),
-        ("FONTSIZE", (0, 0), (-1, 0), 9),
-        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8f8f8")]),
-        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#dddddd")),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("LEFTPADDING", (0, 0), (-1, -1), 8),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-    ]))
-    story.append(lines_table)
+    # ── Lignes ──
+    if d.lines:
+        _append_multiline_table(story, d.lines, value_style)
+    else:
+        _append_legacy_table(story, d, value_style)
+
     story.append(Spacer(1, 6 * mm))
 
     # ── Totaux ──
-    totals = [
-        ["Sous-total HT", fmt_amount(d.montant_ht)],
-        [f"TVA ({d.taux_tva:.0f}%)", fmt_amount(d.montant_tva)],
-        ["TOTAL TTC", fmt_amount(d.montant_ttc)],
-    ]
+    if d.lines:
+        tva_rows = _compute_tva_rows(d.lines)
+        totals = [["Sous-total HT", fmt_amount(d.montant_ht)]]
+        for rate, tva_amt in tva_rows:
+            totals.append([f"TVA ({rate:.4g}%)", fmt_amount(tva_amt)])
+        totals.append(["TOTAL TTC", fmt_amount(d.montant_ttc)])
+    else:
+        tva_rate = d.taux_tva or 20
+        totals = [
+            ["Sous-total HT", fmt_amount(d.montant_ht)],
+            [f"TVA ({tva_rate:.4g}%)", fmt_amount(d.montant_tva)],
+            ["TOTAL TTC", fmt_amount(d.montant_ttc)],
+        ]
+
+    ttc_row = len(totals) - 1
     totals_table = Table(totals, colWidths=[120 * mm, 55 * mm])
     totals_table.setStyle(TableStyle([
         ("ALIGN", (1, 0), (1, -1), "RIGHT"),
         ("FONTNAME", (0, 0), (-1, -1), "LiberationSans"),
-        ("FONTNAME", (0, 2), (-1, 2), "LiberationSans-Bold"),
-        ("FONTSIZE", (0, 2), (-1, 2), 11),
-        ("BACKGROUND", (0, 2), (-1, 2), colors.HexColor("#1a1a2e")),
-        ("TEXTCOLOR", (0, 2), (-1, 2), colors.white),
+        ("FONTNAME", (0, ttc_row), (-1, ttc_row), "LiberationSans-Bold"),
+        ("FONTSIZE", (0, ttc_row), (-1, ttc_row), 11),
+        ("BACKGROUND", (0, ttc_row), (-1, ttc_row), colors.HexColor("#1a1a2e")),
+        ("TEXTCOLOR", (0, ttc_row), (-1, ttc_row), colors.white),
         ("TOPPADDING", (0, 0), (-1, -1), 5),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("RIGHTPADDING", (0, 0), (-1, -1), 8),
@@ -466,7 +539,75 @@ def build_pdf(d: InvoiceData) -> bytes:
     return buf.getvalue()
 
 
-# ── Endpoint ─────────────────────────────────────────────────────────────────
+def _append_legacy_table(story: list, d: InvoiceData, value_style: ParagraphStyle) -> None:
+    rows = [
+        ["Description", "Qté (j)", "TJM (€/j)", "Total HT"],
+        [
+            Paragraph(f"<b>{d.designation or ''}</b><br/><font size='8' color='#555555'>{d.descriptif_mission or ''}</font>", value_style),
+            f"{d.nombre_jours or 0:.2f}",
+            fmt_amount(d.tjm or 0),
+            fmt_amount(d.montant_ht),
+        ],
+    ]
+    t = Table(rows, colWidths=[90 * mm, 22 * mm, 30 * mm, 33 * mm])
+    t.setStyle(_line_table_style())
+    story.append(t)
+
+
+def _append_multiline_table(story: list, lines: list[InvoiceLine], value_style: ParagraphStyle) -> None:
+    has_remise = any(l.remise > 0 for l in lines)
+    if has_remise:
+        headers = ["Description", "Qté", "Unité", "PU HT", "Rem%", "TVA%", "Total HT"]
+        col_w   = [70*mm, 13*mm, 15*mm, 22*mm, 12*mm, 13*mm, 25*mm]
+    else:
+        headers = ["Description", "Qté", "Unité", "PU HT", "TVA%", "Total HT"]
+        col_w   = [76*mm, 14*mm, 17*mm, 24*mm, 14*mm, 25*mm]
+
+    rows = [headers]
+    for l in lines:
+        row = [
+            Paragraph(l.designation + (f"<br/><font size='7' color='#777777'>{l.motif_exoneration}</font>" if l.motif_exoneration else ""), value_style),
+            f"{l.quantite:g}",
+            l.unite,
+            fmt_amount(l.prix_unitaire_ht),
+        ]
+        if has_remise:
+            row.append(f"{l.remise:g}%" if l.remise else "—")
+        row.append(f"{l.taux_tva:g}%")
+        row.append(fmt_amount(l.montant_ht))
+        rows.append(row)
+
+    t = Table(rows, colWidths=col_w)
+    t.setStyle(_line_table_style())
+    story.append(t)
+
+
+def _line_table_style() -> TableStyle:
+    return TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, -1), "LiberationSans"),
+        ("FONTNAME", (0, 0), (-1, 0), "LiberationSans-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 9),
+        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8f8f8")]),
+        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#dddddd")),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+    ])
+
+
+def _compute_tva_rows(lines: list[InvoiceLine]) -> list[tuple[float, float]]:
+    groups: dict[float, float] = {}
+    for l in lines:
+        groups[l.taux_tva] = groups.get(l.taux_tva, 0.0) + l.montant_tva
+    return sorted(groups.items())
+
+
+# ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @app.post("/generate", response_class=Response)
 async def generate_facturx(
