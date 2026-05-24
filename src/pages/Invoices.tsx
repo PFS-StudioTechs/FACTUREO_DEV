@@ -69,7 +69,7 @@ const Invoices = () => {
   const { data: invoices = [] } = useQuery({
     queryKey: ["invoices", user?.id, selectedCompanyId],
     queryFn: async () => {
-      let q = supabase.from("invoices").select("*, clients(nom), companies(denomination)").order("date_facturation", { ascending: false });
+      let q = supabase.from("invoices").select("*, clients(nom), companies(denomination), invoice_lines(*)").order("date_facturation", { ascending: false });
       if (selectedCompanyId) q = q.eq("company_id", selectedCompanyId);
       const { data, error } = await q; if (error) throw error; return data;
     },
@@ -101,24 +101,57 @@ const Invoices = () => {
     mutationFn: async (form: InvoiceFormData) => {
       const dateLimite = new Date(form.dateFacturation);
       dateLimite.setDate(dateLimite.getDate() + form.conditionsPaiement);
-      const ht = form.tjm * (parseFloat(form.nombreJours) || 0);
+
+      const computedLines = form.lines.map(l => {
+        const base = l.prix_unitaire_ht * l.quantite;
+        const ht = base * (1 - l.remise / 100);
+        const tva = ht * (l.taux_tva / 100);
+        return { ...l, montant_ht: ht, montant_tva: tva, montant_ttc: ht + tva };
+      });
+      const montant_ht  = computedLines.reduce((s, l) => s + l.montant_ht, 0);
+      const montant_tva = computedLines.reduce((s, l) => s + l.montant_tva, 0);
+      const montant_ttc = computedLines.reduce((s, l) => s + l.montant_ttc, 0);
+      const taux_tva    = computedLines[0]?.taux_tva ?? 20;
+
       const payload = {
         company_id: form.selectedCompanyId, client_id: form.selectedClientId,
         user_id: user!.id,
         date_facturation: form.dateFacturation.toISOString().split("T")[0],
         date_limite_paiement: dateLimite.toISOString().split("T")[0],
-        designation: form.designation, nombre_jours: parseFloat(form.nombreJours),
-        tjm: form.tjm, montant_ht: ht, taux_tva: 20, montant_tva: ht * 0.2, montant_ttc: ht * 1.2,
+        designation: form.lines[0]?.designation || '',
+        nombre_jours: null, tjm: null,
+        montant_ht, taux_tva, montant_tva, montant_ttc,
         conditions_paiement: form.conditionsPaiement, mode_paiement: form.modePaiement,
         descriptif_mission: form.descriptifMission, numero_bon_commande: form.numeroBonCommande,
+        type: form.type,
       };
+
+      let invoice: any;
       if (editingInvoice) {
         const { data, error } = await supabase.from("invoices").update({ ...payload, numero_facture: form.factureNumber }).eq("id", editingInvoice.id).select("*").single();
-        if (error) throw error; return data;
+        if (error) throw error;
+        invoice = data;
+        await supabase.from("invoice_lines").delete().eq("invoice_id", invoice.id);
+      } else {
+        const num = form.factureNumber.trim() || await generateInvoiceNumber(form.selectedCompanyId, form.dateFacturation);
+        const { data, error } = await supabase.from("invoices").insert({ ...payload, numero_facture: num }).select("*").single();
+        if (error) throw error;
+        invoice = data;
       }
-      const num = form.factureNumber.trim() || await generateInvoiceNumber(form.selectedCompanyId, form.dateFacturation);
-      const { data, error } = await supabase.from("invoices").insert({ ...payload, numero_facture: num }).select("*").single();
-      if (error) throw error; return data;
+
+      if (computedLines.length > 0) {
+        const { error: linesErr } = await supabase.from("invoice_lines").insert(
+          computedLines.map((l, i) => ({
+            invoice_id: invoice.id, user_id: user!.id, position: i,
+            designation: l.designation, quantite: l.quantite, unite: l.unite,
+            prix_unitaire_ht: l.prix_unitaire_ht, remise: l.remise,
+            taux_tva: l.taux_tva, motif_exoneration: l.motif_exoneration,
+            montant_ht: l.montant_ht, montant_tva: l.montant_tva, montant_ttc: l.montant_ttc,
+          }))
+        );
+        if (linesErr) throw linesErr;
+      }
+      return invoice;
     },
     onSuccess: async (invoice) => {
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
@@ -198,7 +231,7 @@ const Invoices = () => {
         if (error || data?.error) throw new Error(error?.message || data?.error);
         const extracted = data?.data; if (!extracted) throw new Error("Données non extraites");
         const matched = clients.find(c => c.nom.toLowerCase().includes(extracted.client_name?.toLowerCase() || "") || (extracted.client_name || "").toLowerCase().includes(c.nom.toLowerCase()));
-        setVoicePrefill({ selectedClientId: matched?.id, dateFacturation: extracted.date_facturation ? new Date(extracted.date_facturation) : undefined, nombreJours: extracted.nombre_jours ? String(extracted.nombre_jours) : undefined });
+        setVoicePrefill({ selectedClientId: matched?.id, dateFacturation: extracted.date_facturation ? new Date(extracted.date_facturation) : undefined });
         setModalOpen(true); toast.success("Données extraites ! Vérifiez le formulaire.");
       } catch (err: any) { toast.error(`Erreur analyse : ${err.message}`);
       } finally { setIsProcessingVoice(false); }

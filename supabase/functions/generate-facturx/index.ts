@@ -40,6 +40,12 @@ serve(async (req) => {
       .single();
     if (clientError || !client) throw new Error(`Client introuvable: ${clientError?.message}`);
 
+    const { data: lines } = await supabase
+      .from("invoice_lines")
+      .select("*")
+      .eq("invoice_id", invoice_id)
+      .order("position");
+
     const payload = {
       invoice_id: invoice.id,
       user_id: invoice.user_id,
@@ -80,6 +86,18 @@ serve(async (req) => {
       mode_paiement: invoice.mode_paiement ?? "VIREMENT",
       conditions_paiement: invoice.conditions_paiement ?? 30,
       numero_bon_commande: invoice.numero_bon_commande ?? "",
+      lines: lines && lines.length > 0 ? lines.map(l => ({
+        designation: l.designation,
+        quantite: l.quantite,
+        unite: l.unite,
+        prix_unitaire_ht: l.prix_unitaire_ht,
+        remise: l.remise,
+        taux_tva: l.taux_tva,
+        motif_exoneration: l.motif_exoneration,
+        montant_ht: l.montant_ht,
+        montant_tva: l.montant_tva,
+        montant_ttc: l.montant_ttc,
+      })) : null,
     };
 
     const fastApiRes = await fetch(`${FACTURX_API_URL}/generate`, {

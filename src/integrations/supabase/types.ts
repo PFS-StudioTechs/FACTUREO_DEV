@@ -299,6 +299,71 @@ export type Database = {
           },
         ]
       }
+      invoice_lines: {
+        Row: {
+          created_at: string
+          designation: string
+          id: string
+          invoice_id: string
+          montant_ht: number
+          montant_ttc: number
+          montant_tva: number
+          motif_exoneration: string
+          position: number
+          prix_unitaire_ht: number
+          quantite: number
+          remise: number
+          taux_tva: number
+          unite: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          designation?: string
+          id?: string
+          invoice_id: string
+          montant_ht?: number
+          montant_ttc?: number
+          montant_tva?: number
+          motif_exoneration?: string
+          position?: number
+          prix_unitaire_ht?: number
+          quantite?: number
+          remise?: number
+          taux_tva?: number
+          unite?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          designation?: string
+          id?: string
+          invoice_id?: string
+          montant_ht?: number
+          montant_ttc?: number
+          montant_tva?: number
+          motif_exoneration?: string
+          position?: number
+          prix_unitaire_ht?: number
+          quantite?: number
+          remise?: number
+          taux_tva?: number
+          unite?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_lines_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           client_id: string
@@ -309,16 +374,22 @@ export type Database = {
           date_limite_paiement: string
           descriptif_mission: string
           designation: string
+          facture_source_id: string | null
+          facturx_url: string | null
           id: string
           mode_paiement: string
           montant_ht: number
           montant_ttc: number
           montant_tva: number
-          nombre_jours: number
+          nombre_jours: number | null
           numero_bon_commande: string
           numero_facture: string
+          sent_at: string | null
+          status: string | null
           taux_tva: number
-          tjm: number
+          tjm: number | null
+          type: string
+          type_piece: string
           updated_at: string
           user_id: string
         }
@@ -331,16 +402,22 @@ export type Database = {
           date_limite_paiement?: string
           descriptif_mission?: string
           designation?: string
+          facture_source_id?: string | null
+          facturx_url?: string | null
           id?: string
           mode_paiement?: string
           montant_ht?: number
           montant_ttc?: number
           montant_tva?: number
-          nombre_jours?: number
+          nombre_jours?: number | null
           numero_bon_commande?: string
           numero_facture?: string
+          sent_at?: string | null
+          status?: string | null
           taux_tva?: number
-          tjm?: number
+          tjm?: number | null
+          type?: string
+          type_piece?: string
           updated_at?: string
           user_id: string
         }
@@ -353,16 +430,22 @@ export type Database = {
           date_limite_paiement?: string
           descriptif_mission?: string
           designation?: string
+          facture_source_id?: string | null
+          facturx_url?: string | null
           id?: string
           mode_paiement?: string
           montant_ht?: number
           montant_ttc?: number
           montant_tva?: number
-          nombre_jours?: number
+          nombre_jours?: number | null
           numero_bon_commande?: string
           numero_facture?: string
+          sent_at?: string | null
+          status?: string | null
           taux_tva?: number
-          tjm?: number
+          tjm?: number | null
+          type?: string
+          type_piece?: string
           updated_at?: string
           user_id?: string
         }

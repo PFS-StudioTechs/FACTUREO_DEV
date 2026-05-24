@@ -154,9 +154,37 @@ export const SideSheet = ({
               <InfoRow label="Conditions" value={`${inv.conditions_paiement}j · ${inv.mode_paiement}`} />
             </Section>
 
+            {inv.invoice_lines && inv.invoice_lines.length > 0 && (
+              <Section title="Lignes">
+                {[...inv.invoice_lines]
+                  .sort((a: any, b: any) => a.position - b.position)
+                  .map((l: any, i: number) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                      <span style={{ fontSize: 12, color: 'var(--text-2)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {l.designation} · {l.quantite} {l.unite}
+                        {l.remise > 0 && <span style={{ color: 'var(--text-3)' }}> −{l.remise}%</span>}
+                        <span style={{ color: 'var(--text-3)', marginLeft: 4 }}>TVA {l.taux_tva}%</span>
+                      </span>
+                      <span style={{ fontSize: 12.5, fontFamily: 'var(--font-mono)', flexShrink: 0 }}>{fmt(l.montant_ttc)}</span>
+                    </div>
+                  ))}
+              </Section>
+            )}
+
             <Section title="Montants">
               <InfoRow label="Montant HT" value={fmt(inv.montant_ht)} />
-              <InfoRow label={`TVA ${inv.taux_tva ?? 20}%`} value={fmt(inv.montant_tva)} />
+              {inv.invoice_lines && inv.invoice_lines.length > 0
+                ? (() => {
+                    const groups: Record<number, number> = {};
+                    for (const l of inv.invoice_lines) {
+                      groups[l.taux_tva] = (groups[l.taux_tva] || 0) + l.montant_tva;
+                    }
+                    return Object.entries(groups).map(([rate, amount]) => (
+                      <InfoRow key={rate} label={`TVA ${rate}%`} value={fmt(amount as number)} />
+                    ));
+                  })()
+                : <InfoRow label={`TVA ${inv.taux_tva ?? 20}%`} value={fmt(inv.montant_tva)} />
+              }
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10 }}>
                 <InfoRow label="Total TTC" value={fmt(inv.montant_ttc)} accent />
               </div>
