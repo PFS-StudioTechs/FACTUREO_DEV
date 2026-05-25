@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Input, Avatar, FacturXBadge, Toggle, Kbd } from '@/components/ui/primitives';
 import { Icon } from '@/components/ui/Icon';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface InvoiceLine {
   designation: string;
@@ -119,6 +120,7 @@ export const CreateInvoiceModal = ({
   open, onClose, companies, clients, onCompanyChange,
   editingInvoice, voicePrefill, onSave, isPending,
 }: CreateInvoiceModalProps) => {
+  const isMobile = useIsMobile();
   const [step, setStep] = useState(0);
   const [companyId, setCompanyId] = useState('');
   const [clientId, setClientId] = useState('');
@@ -676,9 +678,11 @@ export const CreateInvoiceModal = ({
           padding: '14px 24px', borderTop: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
-          <span style={{ fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Kbd>esc</Kbd> annuler
-          </span>
+          {!isMobile && (
+            <span style={{ fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Kbd>esc</Kbd> annuler
+            </span>
+          )}
           <div style={{ flex: 1 }} />
           {step > 0 && (
             <Button variant="ghost" size="md" onClick={() => setStep(s => s - 1)}>Retour</Button>

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Card, Button, Pill, Progress, FacturXBadge, Money } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/Icon";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 /* ─── Helpers ─── */
 const fmt = (n: number) =>
@@ -175,78 +176,84 @@ const KanbanColumn = ({ title, count, total, tone, items, onCardClick }: KanbanC
 );
 
 /* ─── HeroCTA ─── */
-const HeroCTA = ({ onCreate }: { onCreate: () => void }) => (
-  <Card padding={0} style={{
-    background: 'linear-gradient(135deg, var(--bg-3) 0%, var(--bg-2) 100%)',
-    border: '1px solid var(--border)',
-    overflow: 'hidden',
-  }}>
-    <div aria-hidden style={{
-      position: 'absolute', right: -120, top: -120, width: 320, height: 320,
-      borderRadius: '50%',
-      background: 'radial-gradient(closest-side, var(--accent-soft-2), transparent)',
-      pointerEvents: 'none',
-    }} />
-    <div
-      className="grain"
-      style={{ position: 'relative', padding: 28, display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'space-between' }}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, position: 'relative', zIndex: 1, maxWidth: 540 }}>
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11,
-          color: 'var(--accent-bright)', fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase',
-        }}>
-          <Icon name="zap" size={12} /> Action rapide
-        </span>
-        <h2 style={{ fontSize: 32, fontWeight: 600, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
-          Crée une facture<span style={{ color: 'var(--accent)' }}>.</span>
-        </h2>
-        <p style={{ fontSize: 14, color: 'var(--text-2)', margin: 0, lineHeight: 1.5 }}>
-          3 clics. Factur-X généré automatiquement. Envoyée par email.
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-          <Button variant="primary" size="lg" icon="plus" iconRight="arrowRight" onClick={onCreate}>
-            Nouvelle facture
-          </Button>
-          <span style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 6 }}>
-            ou accéder aux factures →
+const HeroCTA = ({ onCreate }: { onCreate: () => void }) => {
+  const isMobile = useIsMobile();
+  return (
+    <Card padding={0} style={{
+      background: 'linear-gradient(135deg, var(--bg-3) 0%, var(--bg-2) 100%)',
+      border: '1px solid var(--border)',
+      overflow: 'hidden',
+    }}>
+      <div aria-hidden style={{
+        position: 'absolute', right: -120, top: -120, width: 320, height: 320,
+        borderRadius: '50%',
+        background: 'radial-gradient(closest-side, var(--accent-soft-2), transparent)',
+        pointerEvents: 'none',
+      }} />
+      <div
+        className="grain"
+        style={{ position: 'relative', padding: isMobile ? 20 : 28, display: 'flex', gap: 24, alignItems: 'center', justifyContent: 'space-between' }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, position: 'relative', zIndex: 1, maxWidth: 540 }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11,
+            color: 'var(--accent-bright)', fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase',
+          }}>
+            <Icon name="zap" size={12} /> Action rapide
           </span>
+          <h2 style={{ fontSize: isMobile ? 24 : 32, fontWeight: 600, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.025em', lineHeight: 1.1 }}>
+            Crée une facture<span style={{ color: 'var(--accent)' }}>.</span>
+          </h2>
+          <p style={{ fontSize: 13, color: 'var(--text-2)', margin: 0, lineHeight: 1.5 }}>
+            3 clics. Factur-X généré automatiquement. Envoyée par email.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+            <Button variant="primary" size={isMobile ? 'md' : 'lg'} icon="plus" iconRight="arrowRight" onClick={onCreate}>
+              Nouvelle facture
+            </Button>
+            {!isMobile && (
+              <span style={{ fontSize: 12, color: 'var(--text-3)', marginLeft: 6 }}>
+                ou accéder aux factures →
+              </span>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Floating invoice preview */}
-      <div style={{
-        width: 240, transform: 'rotate(2deg)',
-        background: 'var(--bg-4)', border: '1px solid var(--border-strong)',
-        borderRadius: 'var(--r-4)', padding: 16,
-        position: 'relative', zIndex: 1,
-        boxShadow: 'var(--shadow-3)', flexShrink: 0,
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-          <div>
-            <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>F-2026-043</div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginTop: 2 }}>Acme Corp</div>
+        {!isMobile && (
+          <div style={{
+            width: 240, transform: 'rotate(2deg)',
+            background: 'var(--bg-4)', border: '1px solid var(--border-strong)',
+            borderRadius: 'var(--r-4)', padding: 16,
+            position: 'relative', zIndex: 1,
+            boxShadow: 'var(--shadow-3)', flexShrink: 0,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>F-2026-043</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)', marginTop: 2 }}>Acme Corp</div>
+              </div>
+              <FacturXBadge size="sm" />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--text-2)', marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Conseil produit · 8j</span>
+                <span style={{ fontFamily: 'var(--font-mono)' }}>5 200 €</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>TVA 20%</span>
+                <span style={{ fontFamily: 'var(--font-mono)' }}>1 040 €</span>
+              </div>
+            </div>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 11, color: 'var(--text-2)' }}>Total TTC</span>
+              <Money value="6 240,00" size={18} weight={600} color="var(--accent-bright)" />
+            </div>
           </div>
-          <FacturXBadge size="sm" />
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, color: 'var(--text-2)', marginBottom: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Conseil produit · 8j</span>
-            <span style={{ fontFamily: 'var(--font-mono)' }}>5 200 €</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>TVA 20%</span>
-            <span style={{ fontFamily: 'var(--font-mono)' }}>1 040 €</span>
-          </div>
-        </div>
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span style={{ fontSize: 11, color: 'var(--text-2)' }}>Total TTC</span>
-          <Money value="6 240,00" size={18} weight={600} color="var(--accent-bright)" />
-        </div>
+        )}
       </div>
-    </div>
-  </Card>
-);
+    </Card>
+  );
+};
 
 /* ─── SimpleChart ─── */
 const SimpleChart = ({ data, labels }: { data: number[]; labels: string[] }) => {
@@ -304,6 +311,7 @@ const SimpleChart = ({ data, labels }: { data: number[]; labels: string[] }) => 
 const Index = () => {
   const { pseudo, user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   /* Existing query — kept unchanged */
   const { data: stats } = useQuery({
@@ -446,19 +454,19 @@ const Index = () => {
   const monthStr = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
   return (
-    <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ padding: isMobile ? '16px' : '24px 28px', display: 'flex', flexDirection: 'column', gap: isMobile ? 14 : 20 }}>
 
       {/* Greeting */}
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
         <div>
-          <h2 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em' }}>
+          <h2 style={{ fontSize: isMobile ? 20 : 22, fontWeight: 600, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em' }}>
             Salut {pseudo || 'toi'},
           </h2>
-          <p style={{ fontSize: 13.5, color: 'var(--text-2)', margin: '4px 0 0' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-2)', margin: '4px 0 0' }}>
             Voilà où tu en es ce mois-ci.
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-3)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
           <Icon name="calendar" size={13} />
           {monthStr.charAt(0).toUpperCase() + monthStr.slice(1)}
         </div>
@@ -468,7 +476,7 @@ const Index = () => {
       <HeroCTA onCreate={() => navigate('/factures')} />
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: isMobile ? 8 : 12 }}>
         <KPI
           label="CA réalisé"
           value={fmt(stats?.totalHT || 0)}
@@ -481,14 +489,14 @@ const Index = () => {
           hint="20% du CA HT"
         />
         <KPI
-          label={`Prévisionnel ${new Date().getFullYear()}`}
+          label={isMobile ? `Prévi. ${new Date().getFullYear()}` : `Prévisionnel ${new Date().getFullYear()}`}
           value={fmt(stats?.totalForecast || 0)}
-          hint={`${stats?.clients || 0} client${(stats?.clients || 0) !== 1 ? 's' : ''} · ${stats?.companies || 0} entreprise${(stats?.companies || 0) !== 1 ? 's' : ''}`}
+          hint={isMobile ? undefined : `${stats?.clients || 0} client${(stats?.clients || 0) !== 1 ? 's' : ''} · ${stats?.companies || 0} entreprise${(stats?.companies || 0) !== 1 ? 's' : ''}`}
         />
       </div>
 
       {/* Chart + todos */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.5fr 1fr', gap: 12 }}>
         <Card padding={20}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 14 }}>
             <div>
@@ -544,21 +552,52 @@ const Index = () => {
             Tes factures, par statut
           </h3>
           <div style={{ display: 'flex', gap: 6 }}>
-            <Button variant="ghost" size="sm" icon="filter">Filtrer</Button>
+            {!isMobile && <Button variant="ghost" size="sm" icon="filter">Filtrer</Button>}
             <Button variant="subtle" size="sm" iconRight="arrowRight" onClick={() => navigate('/factures')}>
               Voir tout
             </Button>
           </div>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, minHeight: 300 }}>
-          {kanbanCols.map(col => (
-            <KanbanColumn
-              key={col.title}
-              {...col}
-              onCardClick={() => navigate('/factures')}
-            />
-          ))}
-        </div>
+
+        {isMobile ? (
+          <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+            {kanbanCols.map(col => (
+              <button
+                key={col.title}
+                onClick={() => navigate('/factures')}
+                style={{
+                  flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 6,
+                  background: 'var(--bg-2)', border: '1px solid var(--border)',
+                  borderRadius: 'var(--r-3)', padding: '14px 18px',
+                  minWidth: 110, cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: 999, background: STATUS_DOT[col.tone], flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 500 }}>{col.title}</span>
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 28, fontWeight: 700, color: 'var(--text-1)', lineHeight: 1 }}>
+                  {col.count}
+                </div>
+                {col.total !== '0' && (
+                  <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>
+                    {col.total} €
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 12, minHeight: 300 }}>
+            {kanbanCols.map(col => (
+              <KanbanColumn
+                key={col.title}
+                {...col}
+                onCardClick={() => navigate('/factures')}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
     </div>
