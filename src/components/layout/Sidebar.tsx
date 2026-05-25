@@ -15,14 +15,16 @@ const NAV = [
 ];
 
 const ADMIN_NAV = [
+  { id: 'utilisateurs', label: 'Utilisateurs', icon: 'shield', path: '/utilisateurs', count: undefined as number | undefined },
   { id: 'params', label: 'Paramètres', icon: 'settings', path: '/parametrage', count: undefined as number | undefined },
 ];
 
 interface SidebarProps {
   onOpenDS?: () => void;
+  onOpenSearch?: () => void;
 }
 
-export const Sidebar = ({ onOpenDS }: SidebarProps) => {
+export const Sidebar = ({ onOpenDS, onOpenSearch }: SidebarProps) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, pseudo, isAdmin, signOut } = useAuth();
@@ -78,6 +80,7 @@ export const Sidebar = ({ onOpenDS }: SidebarProps) => {
 
       {/* Search */}
       <button
+        onClick={onOpenSearch}
         style={{
           display: 'flex',
           alignItems: 'center',

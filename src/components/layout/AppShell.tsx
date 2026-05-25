@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { GlobalSearch } from './GlobalSearch';
 
 const ROUTE_META: { path: string; title: string; breadcrumb?: string[] }[] = [
   { path: '/parametrage',    title: 'Paramètres',      breadcrumb: ['Administration', 'Paramètres'] },
@@ -20,6 +21,7 @@ const getMeta = (pathname: string) =>
 
 const AppShell = () => {
   const location = useLocation();
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const [theme, setTheme] = useState<'dark' | 'light'>(
     () => (localStorage.getItem('factureo-theme') as 'dark' | 'light') || 'dark'
@@ -30,11 +32,23 @@ const AppShell = () => {
     localStorage.setItem('factureo-theme', theme);
   }, [theme]);
 
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      setSearchOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
   const meta = getMeta(location.pathname);
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-0)', overflow: 'hidden' }}>
-      <Sidebar />
+      <Sidebar onOpenSearch={() => setSearchOpen(true)} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         <Topbar
           title={meta.title}
@@ -46,6 +60,7 @@ const AppShell = () => {
           <Outlet />
         </main>
       </div>
+      <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
 };
