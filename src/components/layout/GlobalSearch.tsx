@@ -11,10 +11,20 @@ interface GlobalSearchProps {
 }
 
 interface SearchResults {
-  invoices: { id: string; numero: string; statut: string }[];
+  invoices: { id: string; numero_facture: string; status: string | null }[];
   clients: { id: string; nom: string }[];
   companies: { id: string; nom: string }[];
 }
+
+const NAV_SHORTCUTS = [
+  { label: 'Tableau de bord', icon: 'dashboard', path: '/', keywords: ['tableau', 'bord', 'dashboard', 'accueil'] },
+  { label: 'Factures', icon: 'invoice', path: '/factures', keywords: ['facture', 'fact', 'invoice'] },
+  { label: 'Clients', icon: 'users', path: '/clients', keywords: ['client'] },
+  { label: 'Entreprises', icon: 'building', path: '/entreprises', keywords: ['entreprise', 'société', 'societe', 'company'] },
+  { label: 'Notes de frais', icon: 'receipt', path: '/notes-de-frais', keywords: ['frais', 'note', 'dépense', 'depense', 'ndf'] },
+  { label: 'Prévisionnel', icon: 'trending', path: '/previsionnel', keywords: ['prévisionnel', 'previsionnel', 'prévision', 'prevision', 'forecast'] },
+  { label: 'Paramètres', icon: 'settings', path: '/parametrage', keywords: ['paramètre', 'parametre', 'paramétrage', 'parametrage', 'settings'] },
+];
 
 export const GlobalSearch = ({ open, onClose }: GlobalSearchProps) => {
   const navigate = useNavigate();
@@ -33,12 +43,16 @@ export const GlobalSearch = ({ open, onClose }: GlobalSearchProps) => {
     queryFn: async () => {
       const q = `%${query}%`;
       const [inv, cli, comp] = await Promise.all([
-        supabase.from('invoices').select('id, numero, statut').ilike('numero', q).limit(5),
+        supabase
+          .from('invoices')
+          .select('id, numero_facture, status')
+          .or(`numero_facture.ilike.${q},designation.ilike.${q},descriptif_mission.ilike.${q}`)
+          .limit(5),
         supabase.from('clients').select('id, nom').ilike('nom', q).limit(5),
         supabase.from('companies').select('id, nom').ilike('nom', q).limit(5),
       ]);
       return {
-        invoices: (inv.data || []) as { id: string; numero: string; statut: string }[],
+        invoices: (inv.data || []) as { id: string; numero_facture: string; status: string | null }[],
         clients: (cli.data || []) as { id: string; nom: string }[],
         companies: (comp.data || []) as { id: string; nom: string }[],
       };
@@ -46,28 +60,65 @@ export const GlobalSearch = ({ open, onClose }: GlobalSearchProps) => {
     enabled: query.length >= 2,
   });
 
-  const hasResults = results && (results.invoices.length > 0 || results.clients.length > 0 || results.companies.length > 0);
+  const matchedNavs = query.length >= 2
+    ? NAV_SHORTCUTS.filter(n =>
+        n.keywords.some(k => k.includes(query.toLowerCase()) || query.toLowerCase().includes(k))
+        || n.label.toLowerCase().includes(query.toLowerCase())
+      )
+    : [];
+
+  const hasDbResults = results && (results.invoices.length > 0 || results.clients.length > 0 || results.companies.length > 0);
+  const hasResults = matchedNavs.length > 0 || hasDbResults;
   const showEmpty = query.length >= 2 && !isFetching && !hasResults;
 
   const go = (path: string) => { navigate(path); onClose(); };
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent style={{ padding: 0, overflow: 'hidden', maxWidth: 560, gap: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+      <DialogContent
+        style={{
+          padding: 0,
+          overflow: 'hidden',
+          maxWidth: 560,
+          gap: 0,
+          background: 'var(--bg-1)',
+          border: '1px solid var(--border)',
+          color: 'var(--text-1)',
+        }}
+        className="[&>button.absolute]:hidden"
+      >
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '12px 16px',
+          borderBottom: '1px solid var(--border-subtle)',
+        }}>
           <Icon name="search" size={16} color="var(--text-3)" />
           <input
             ref={inputRef}
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Rechercher une facture, client, entreprise…"
+            placeholder="Rechercher une facture, client, page…"
             style={{
-              flex: 1, background: 'none', border: 'none', outline: 'none',
-              fontSize: 14, color: 'var(--text-1)',
+              flex: 1,
+              background: 'none',
+              border: 'none',
+              outline: 'none',
+              fontSize: 14,
+              color: 'var(--text-1)',
+              caretColor: 'var(--accent)',
             }}
           />
           {isFetching && <Icon name="refresh" size={14} color="var(--text-3)" />}
-          <kbd style={{ fontSize: 11, color: 'var(--text-3)', background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 4, padding: '2px 5px' }}>Esc</kbd>
+          <kbd style={{
+            fontSize: 11,
+            color: 'var(--text-3)',
+            background: 'var(--bg-3)',
+            border: '1px solid var(--border)',
+            borderRadius: 4,
+            padding: '2px 5px',
+          }}>Esc</kbd>
         </div>
 
         {query.length < 2 && (
@@ -84,21 +135,34 @@ export const GlobalSearch = ({ open, onClose }: GlobalSearchProps) => {
 
         {hasResults && (
           <div style={{ maxHeight: 360, overflowY: 'auto' }}>
-            {results.invoices.length > 0 && (
-              <Section label="Factures">
-                {results.invoices.map(inv => (
-                  <ResultRow key={inv.id} icon="invoice" label={inv.numero} sub={inv.statut} onClick={() => go('/factures')} />
+            {matchedNavs.length > 0 && (
+              <Section label="Pages">
+                {matchedNavs.map(n => (
+                  <ResultRow key={n.path} icon={n.icon} label={n.label} onClick={() => go(n.path)} />
                 ))}
               </Section>
             )}
-            {results.clients.length > 0 && (
+            {results && results.invoices.length > 0 && (
+              <Section label="Factures">
+                {results.invoices.map(inv => (
+                  <ResultRow
+                    key={inv.id}
+                    icon="invoice"
+                    label={inv.numero_facture}
+                    sub={inv.status ?? undefined}
+                    onClick={() => go('/factures')}
+                  />
+                ))}
+              </Section>
+            )}
+            {results && results.clients.length > 0 && (
               <Section label="Clients">
                 {results.clients.map(c => (
                   <ResultRow key={c.id} icon="users" label={c.nom} onClick={() => go('/clients')} />
                 ))}
               </Section>
             )}
-            {results.companies.length > 0 && (
+            {results && results.companies.length > 0 && (
               <Section label="Entreprises">
                 {results.companies.map(c => (
                   <ResultRow key={c.id} icon="building" label={c.nom} onClick={() => go('/entreprises')} />
@@ -114,7 +178,14 @@ export const GlobalSearch = ({ open, onClose }: GlobalSearchProps) => {
 
 const Section = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div>
-    <div style={{ padding: '8px 16px 4px', fontSize: 11, fontWeight: 600, color: 'var(--text-3)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+    <div style={{
+      padding: '8px 16px 4px',
+      fontSize: 11,
+      fontWeight: 600,
+      color: 'var(--text-3)',
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
+    }}>
       {label}
     </div>
     {children}
@@ -125,11 +196,19 @@ const ResultRow = ({ icon, label, sub, onClick }: { icon: string; label: string;
   <button
     onClick={onClick}
     style={{
-      width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-      padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer',
-      color: 'var(--text-1)', fontSize: 13, textAlign: 'left',
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      padding: '8px 16px',
+      background: 'none',
+      border: 'none',
+      cursor: 'pointer',
+      color: 'var(--text-1)',
+      fontSize: 13,
+      textAlign: 'left',
     }}
-    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-2)'; }}
     onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
   >
     <Icon name={icon} size={14} color="var(--text-3)" />
