@@ -3,6 +3,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { GlobalSearch } from './GlobalSearch';
+import { BottomNav } from './BottomNav';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const ROUTE_META: { path: string; title: string; breadcrumb?: string[] }[] = [
   { path: '/parametrage',    title: 'Paramètres',      breadcrumb: ['Administration', 'Paramètres'] },
@@ -21,6 +23,7 @@ const getMeta = (pathname: string) =>
 
 const AppShell = () => {
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [searchOpen, setSearchOpen] = useState(false);
 
   const [theme, setTheme] = useState<'dark' | 'light'>(
@@ -48,18 +51,19 @@ const AppShell = () => {
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: 'var(--bg-0)', overflow: 'hidden' }}>
-      <Sidebar onOpenSearch={() => setSearchOpen(true)} />
+      {!isMobile && <Sidebar onOpenSearch={() => setSearchOpen(true)} />}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
         <Topbar
           title={meta.title}
-          breadcrumb={meta.breadcrumb}
+          breadcrumb={isMobile ? undefined : meta.breadcrumb}
           theme={theme}
           onTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
         />
-        <main style={{ flex: 1, overflowY: 'auto' }}>
+        <main style={{ flex: 1, overflowY: 'auto', paddingBottom: isMobile ? 56 : 0 }}>
           <Outlet />
         </main>
       </div>
+      {isMobile && <BottomNav />}
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   );
