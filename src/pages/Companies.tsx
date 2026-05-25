@@ -168,7 +168,18 @@ const Companies = () => {
   };
 
   const handleFieldChange = (key: string, value: string) => {
-    setForm({ ...form, [key]: key === "telephone" ? sanitizePhone(value) : value });
+    const updated = { ...form, [key]: key === "telephone" ? sanitizePhone(value) : value };
+    if (key === 'siret') {
+      const siren = value.replace(/\s/g, '').slice(0, 9);
+      if (siren.length === 9 && /^\d+$/.test(siren)) {
+        const n = parseInt(siren, 10);
+        const k = (12 + 3 * (n % 97)) % 97;
+        updated.tva_intracommunautaire = `FR${String(k).padStart(2, '0')}${siren}`;
+      } else {
+        updated.tva_intracommunautaire = '';
+      }
+    }
+    setForm(updated);
   };
 
   return (
