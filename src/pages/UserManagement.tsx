@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,6 +15,7 @@ import { Icon } from "@/components/ui/Icon";
 
 const UserManagement = () => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -175,57 +177,95 @@ const UserManagement = () => {
               <Icon name="users" size={15} color="var(--accent-bright)" />
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>En attente de validation ({pendingUsers.length})</span>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Pseudo', 'Email', 'Téléphone', 'Inscription', 'Action'].map(h => (
-                    <th key={h} style={thStyle}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
+            {isMobile ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {pendingUsers.map(pu => (
-                  <tr key={pu.user_id}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                  >
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Avatar name={pu.pseudo} size={28} />
-                        <span style={{ fontWeight: 500 }}>{pu.pseudo}</span>
+                  <div key={pu.user_id} style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-accent)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <Avatar name={pu.pseudo} size={32} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-1)' }}>{pu.pseudo}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{new Date(pu.created_at).toLocaleDateString("fr-FR")}</div>
                       </div>
-                    </td>
-                    <td style={{ ...tdStyle, color: 'var(--text-2)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Mail className="w-3 h-3 text-muted-foreground" />
-                        {pu.email || '—'}
+                    </div>
+                    {pu.email && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', marginBottom: 4 }}>
+                        <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pu.email}</span>
                       </div>
-                    </td>
-                    <td style={{ ...tdStyle, color: 'var(--text-2)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Phone className="w-3 h-3 text-muted-foreground" />
-                        {pu.telephone || '—'}
+                    )}
+                    {pu.telephone && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', marginBottom: 8 }}>
+                        <Phone className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        {pu.telephone}
                       </div>
-                    </td>
-                    <td style={{ ...tdStyle, color: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                      {new Date(pu.created_at).toLocaleDateString("fr-FR")}
-                    </td>
-                    <td style={tdStyle}>
-                      <Select
-                        defaultValue="user"
-                        onValueChange={role => assignRoleMutation.mutate({ userId: pu.user_id, role: role as "admin" | "user", userEmail: pu.email, userPseudo: pu.pseudo })}
-                      >
-                        <SelectTrigger className="w-[160px]"><SelectValue placeholder="Attribuer un rôle" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin"><div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4" />Admin</div></SelectItem>
-                          <SelectItem value="user"><div className="flex items-center gap-2"><UserCheck className="w-4 h-4" />Utilisateur</div></SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </td>
-                  </tr>
+                    )}
+                    <Select
+                      defaultValue="user"
+                      onValueChange={role => assignRoleMutation.mutate({ userId: pu.user_id, role: role as "admin" | "user", userEmail: pu.email, userPseudo: pu.pseudo })}
+                    >
+                      <SelectTrigger style={{ width: '100%' }}><SelectValue placeholder="Attribuer un rôle" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin"><div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4" />Admin</div></SelectItem>
+                        <SelectItem value="user"><div className="flex items-center gap-2"><UserCheck className="w-4 h-4" />Utilisateur</div></SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Pseudo', 'Email', 'Téléphone', 'Inscription', 'Action'].map(h => (
+                      <th key={h} style={thStyle}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingUsers.map(pu => (
+                    <tr key={pu.user_id}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Avatar name={pu.pseudo} size={28} />
+                          <span style={{ fontWeight: 500 }}>{pu.pseudo}</span>
+                        </div>
+                      </td>
+                      <td style={{ ...tdStyle, color: 'var(--text-2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Mail className="w-3 h-3 text-muted-foreground" />
+                          {pu.email || '—'}
+                        </div>
+                      </td>
+                      <td style={{ ...tdStyle, color: 'var(--text-2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Phone className="w-3 h-3 text-muted-foreground" />
+                          {pu.telephone || '—'}
+                        </div>
+                      </td>
+                      <td style={{ ...tdStyle, color: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                        {new Date(pu.created_at).toLocaleDateString("fr-FR")}
+                      </td>
+                      <td style={tdStyle}>
+                        <Select
+                          defaultValue="user"
+                          onValueChange={role => assignRoleMutation.mutate({ userId: pu.user_id, role: role as "admin" | "user", userEmail: pu.email, userPseudo: pu.pseudo })}
+                        >
+                          <SelectTrigger className="w-[160px]"><SelectValue placeholder="Attribuer un rôle" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin"><div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4" />Admin</div></SelectItem>
+                            <SelectItem value="user"><div className="flex items-center gap-2"><UserCheck className="w-4 h-4" />Utilisateur</div></SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
 
@@ -242,86 +282,144 @@ const UserManagement = () => {
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>Utilisateurs actifs ({usersWithRoles.length})</span>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {['Pseudo', 'Email', 'Téléphone', 'Rôle', 'Date d\'ajout', ''].map((h, i) => (
-                    <th key={i} style={thStyle}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
+            {isMobile ? (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {usersWithRoles.map((ur, i) => (
-                  <tr
+                  <div
                     key={ur.id}
-                    style={{ borderBottom: i < usersWithRoles.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                    style={{ padding: '12px 16px', borderBottom: i < usersWithRoles.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}
                   >
-                    <td style={tdStyle}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Avatar name={ur.pseudo} size={28} />
-                        <span style={{ fontWeight: 500 }}>{ur.pseudo}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <Avatar name={ur.pseudo} size={32} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-1)' }}>{ur.pseudo}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-3)', fontFamily: 'var(--font-mono)' }}>{new Date(ur.created_at).toLocaleDateString("fr-FR")}</div>
                       </div>
-                    </td>
-                    <td style={{ ...tdStyle, color: 'var(--text-2)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Mail className="w-3 h-3 text-muted-foreground" />
-                        {ur.email || '—'}
-                      </div>
-                    </td>
-                    <td style={{ ...tdStyle, color: 'var(--text-2)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <Phone className="w-3 h-3 text-muted-foreground" />
-                        {ur.telephone || '—'}
-                      </div>
-                    </td>
-                    <td style={tdStyle}>
-                      <Select
-                        value={ur.role}
-                        onValueChange={v => updateRoleMutation.mutate({ id: ur.id, role: v as "admin" | "user" })}
-                        disabled={ur.user_id === user?.id}
-                      >
-                        <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">
-                            <Pill tone="accent" size="sm" dot>Admin</Pill>
-                          </SelectItem>
-                          <SelectItem value="user">
-                            <Pill tone="neutral" size="sm" dot>Utilisateur</Pill>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td style={{ ...tdStyle, color: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
-                      {new Date(ur.created_at).toLocaleDateString("fr-FR")}
-                    </td>
-                    <td style={{ ...tdStyle, textAlign: 'right' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
                         <button
                           onClick={() => openEditDialog(ur)}
-                          style={{ width: 28, height: 28, borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', cursor: 'pointer', background: 'none', border: 'none' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-3)'; e.currentTarget.style.color = 'var(--text-1)'; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-3)'; }}
+                          style={{ width: 36, height: 36, borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', cursor: 'pointer', background: 'none', border: 'none' }}
                         >
-                          <Icon name="edit" size={14} />
+                          <Icon name="edit" size={16} />
                         </button>
                         {ur.user_id !== user?.id && (
                           <button
                             onClick={() => { setUserToDelete(ur); setDeleteConfirmOpen(true); }}
-                            style={{ width: 28, height: 28, borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)', cursor: 'pointer', background: 'none', border: 'none' }}
-                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                            style={{ width: 36, height: 36, borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)', cursor: 'pointer', background: 'none', border: 'none' }}
                           >
-                            <Icon name="trash" size={14} />
+                            <Icon name="trash" size={16} />
                           </button>
                         )}
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+                    {ur.email && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', marginBottom: 4 }}>
+                        <Mail className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ur.email}</span>
+                      </div>
+                    )}
+                    {ur.telephone && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-2)', marginBottom: 8 }}>
+                        <Phone className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        {ur.telephone}
+                      </div>
+                    )}
+                    <Select
+                      value={ur.role}
+                      onValueChange={v => updateRoleMutation.mutate({ id: ur.id, role: v as "admin" | "user" })}
+                      disabled={ur.user_id === user?.id}
+                    >
+                      <SelectTrigger style={{ width: '100%' }}><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="admin"><Pill tone="accent" size="sm" dot>Admin</Pill></SelectItem>
+                        <SelectItem value="user"><Pill tone="neutral" size="sm" dot>Utilisateur</Pill></SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    {['Pseudo', 'Email', 'Téléphone', 'Rôle', 'Date d\'ajout', ''].map((h, i) => (
+                      <th key={i} style={thStyle}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {usersWithRoles.map((ur, i) => (
+                    <tr
+                      key={ur.id}
+                      style={{ borderBottom: i < usersWithRoles.length - 1 ? '1px solid var(--border-subtle)' : 'none' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                    >
+                      <td style={tdStyle}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Avatar name={ur.pseudo} size={28} />
+                          <span style={{ fontWeight: 500 }}>{ur.pseudo}</span>
+                        </div>
+                      </td>
+                      <td style={{ ...tdStyle, color: 'var(--text-2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Mail className="w-3 h-3 text-muted-foreground" />
+                          {ur.email || '—'}
+                        </div>
+                      </td>
+                      <td style={{ ...tdStyle, color: 'var(--text-2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Phone className="w-3 h-3 text-muted-foreground" />
+                          {ur.telephone || '—'}
+                        </div>
+                      </td>
+                      <td style={tdStyle}>
+                        <Select
+                          value={ur.role}
+                          onValueChange={v => updateRoleMutation.mutate({ id: ur.id, role: v as "admin" | "user" })}
+                          disabled={ur.user_id === user?.id}
+                        >
+                          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="admin">
+                              <Pill tone="accent" size="sm" dot>Admin</Pill>
+                            </SelectItem>
+                            <SelectItem value="user">
+                              <Pill tone="neutral" size="sm" dot>Utilisateur</Pill>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
+                      <td style={{ ...tdStyle, color: 'var(--text-3)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                        {new Date(ur.created_at).toLocaleDateString("fr-FR")}
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 2 }}>
+                          <button
+                            onClick={() => openEditDialog(ur)}
+                            style={{ width: 28, height: 28, borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', cursor: 'pointer', background: 'none', border: 'none' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-3)'; e.currentTarget.style.color = 'var(--text-1)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = 'var(--text-3)'; }}
+                          >
+                            <Icon name="edit" size={14} />
+                          </button>
+                          {ur.user_id !== user?.id && (
+                            <button
+                              onClick={() => { setUserToDelete(ur); setDeleteConfirmOpen(true); }}
+                              style={{ width: 28, height: 28, borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)', cursor: 'pointer', background: 'none', border: 'none' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--danger-soft)'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                            >
+                              <Icon name="trash" size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </div>
