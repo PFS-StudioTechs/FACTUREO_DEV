@@ -6,7 +6,7 @@ const today = new Date(); today.setHours(0, 0, 0, 0);
 
 function getStatus(inv: any): 'draft' | 'sent' | 'late' | 'paid' {
   if (!inv.status || inv.status === 'brouillon') return 'draft';
-  if (inv.status === 'envoyée') return 'paid';
+  if (inv.status === 'payée') return 'paid';
   const due = inv.date_limite_paiement ? new Date(inv.date_limite_paiement) : null;
   return (due && due < today) ? 'late' : 'sent';
 }
@@ -17,6 +17,18 @@ const STATUS_META = {
   late:  { label: 'Retard',    tone: 'danger'  as const },
   paid:  { label: 'Payée',     tone: 'success' as const },
 };
+
+const STATUS_OPTS: { db: string; label: string; color: string }[] = [
+  { db: 'brouillon', label: 'Brouillon', color: 'var(--status-draft)' },
+  { db: 'envoyée',   label: 'Envoyée',   color: 'var(--status-sent)'  },
+  { db: 'payée',     label: 'Payée',     color: 'var(--status-paid)'  },
+];
+
+function currentDbMatches(inv: any, db: string): boolean {
+  if (db === 'brouillon') return !inv.status || inv.status === 'brouillon';
+  if (db === 'envoyée')   return inv.status === 'envoyée' || inv.status === 'générée';
+  return inv.status === db;
+}
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
@@ -29,6 +41,7 @@ interface SideSheetProps {
   onDelete: (id: string) => void;
   onSend: (invoice: any) => void;
   onGenerateFacturx: (invoice: any) => void;
+  onStatusChange: (invoiceId: string, dbStatus: string) => void;
   isAdmin: boolean;
   sendingId: string | null;
   generatingId: string | null;
@@ -69,7 +82,7 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
 
 export const SideSheet = ({
   invoice, open, onClose,
-  onEdit, onDelete, onSend, onGenerateFacturx,
+  onEdit, onDelete, onSend, onGenerateFacturx, onStatusChange,
   isAdmin, sendingId, generatingId,
 }: SideSheetProps) => {
   if (!invoice && !open) return null;
@@ -206,8 +219,36 @@ export const SideSheet = ({
             padding: '14px 20px',
             borderTop: '1px solid var(--border)',
             background: 'var(--bg-1)',
-            display: 'flex', flexDirection: 'column', gap: 8,
+            display: 'flex', flexDirection: 'column', gap: 10,
           }}>
+            {/* Status selector */}
+            <div style={{ display: 'flex', gap: 6 }}>
+              {STATUS_OPTS.map(opt => {
+                const active = currentDbMatches(inv, opt.db);
+                return (
+                  <button
+                    key={opt.db}
+                    onClick={() => { if (!active) onStatusChange(inv.id, opt.db); }}
+                    style={{
+                      flex: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                      padding: '5px 8px', borderRadius: 'var(--r-3)',
+                      background: active ? 'var(--bg-3)' : 'transparent',
+                      border: `1px solid ${active ? 'var(--border-strong)' : 'var(--border)'}`,
+                      color: active ? 'var(--text-1)' : 'var(--text-3)',
+                      fontSize: 11, fontWeight: active ? 600 : 400,
+                      cursor: active ? 'default' : 'pointer',
+                      transition: 'all 120ms',
+                    }}
+                    onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--bg-2)'; }}
+                    onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <span style={{ width: 6, height: 6, borderRadius: 999, background: opt.color, flexShrink: 0 }} />
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+
             <div style={{ display: 'flex', gap: 8 }}>
               <Button variant="subtle" size="sm" icon="edit" onClick={() => onEdit(inv)} style={{ flex: 1, justifyContent: 'center' }}>
                 Modifier

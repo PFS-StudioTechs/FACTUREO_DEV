@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -16,7 +17,7 @@ import { CreateInvoiceModal, type InvoiceFormData } from "@/components/invoices/
 
 const getStatus = (inv: any): 'draft' | 'sent' | 'late' | 'paid' => {
   if (!inv.status || inv.status === 'brouillon') return 'draft';
-  if (inv.status === 'envoyée') return 'paid';
+  if (inv.status === 'payée') return 'paid';
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const due = inv.date_limite_paiement ? new Date(inv.date_limite_paiement) : null;
   return (due && due < today) ? 'late' : 'sent';
@@ -25,11 +26,12 @@ const getStatus = (inv: any): 'draft' | 'sent' | 'late' | 'paid' => {
 const Invoices = () => {
   const { user, session, isAdmin } = useAuth();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
 
   const [view,            setView]            = useState<ViewKey>('kanban');
   const [filter,          setFilter]          = useState<FilterKey>('all');
   const [sheetOpen,       setSheetOpen]       = useState(false);
-  const [sheetInvoice,    setSheetInvoice]    = useState<any>(null);
+  const [sheetInvoiceId,  setSheetInvoiceId]  = useState<string | null>(null);
   const [modalOpen,       setModalOpen]       = useState(false);
   const [editingInvoice,  setEditingInvoice]  = useState<any>(null);
   const [voicePrefill,    setVoicePrefill]    = useState<any>(null);
@@ -74,6 +76,21 @@ const Invoices = () => {
       const { data, error } = await q; if (error) throw error; return data;
     },
     enabled: !!user,
+  });
+
+  const sheetInvoice = sheetInvoiceId ? (invoices as any[]).find(i => i.id === sheetInvoiceId) ?? null : null;
+
+  const updateStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+      const { error } = await supabase.from('invoices').update({ status }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      toast.success('Statut mis à jour');
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 
   const generateInvoiceNumber = async (companyId: string, date: Date) => {
@@ -267,7 +284,7 @@ const Invoices = () => {
 
   const openEdit = (inv: any) => { setSelectedCompanyId(inv.company_id); setEditingInvoice(inv); setModalOpen(true); };
   const openSend = (inv: any) => { setSendInvoice(inv); setRecipientEmail(""); setSendDialogOpen(true); };
-  const openSheet = (inv: any) => { setSheetInvoice(inv); setSheetOpen(true); };
+  const openSheet = (inv: any) => { setSheetInvoiceId(inv.id); setSheetOpen(true); };
 
   const filtered = filter === 'all' ? invoices : invoices.filter(i => getStatus(i) === filter);
   const counts = (['all', 'draft', 'sent', 'late', 'paid'] as FilterKey[]).reduce((acc, k) => {
@@ -290,10 +307,14 @@ const Invoices = () => {
         isRecording={isRecording} isProcessingVoice={isProcessingVoice}
         onVoice={startVoiceRecording}
         onNewInvoice={() => { setEditingInvoice(null); setVoicePrefill(null); setModalOpen(true); }}
+        isMobile={isMobile}
       />
 
-      {view === 'kanban' ? (
-        <KanbanBoard invoices={filtered} onCardClick={openSheet} sheetOpen={sheetOpen} />
+      {!isMobile && view === 'kanban' ? (
+        <KanbanBoard
+          invoices={filtered} onCardClick={openSheet} sheetOpen={sheetOpen}
+          onStatusChange={(id, status) => updateStatus.mutate({ id, status })}
+        />
       ) : (
         <ListView
           invoices={filtered} onEdit={openEdit} onDelete={id => deleteMutation.mutate(id)}
@@ -303,11 +324,12 @@ const Invoices = () => {
       )}
 
       <SideSheet
-        invoice={sheetInvoice} open={sheetOpen} onClose={() => setSheetOpen(false)}
+        invoice={sheetInvoice} open={sheetOpen} onClose={() => { setSheetOpen(false); setSheetInvoiceId(null); }}
         onEdit={inv => { setSheetOpen(false); openEdit(inv); }}
-        onDelete={id => deleteMutation.mutate(id)}
+        onDelete={id => { deleteMutation.mutate(id); setSheetInvoiceId(null); }}
         onSend={inv => { setSheetOpen(false); openSend(inv); }}
         onGenerateFacturx={handleGenerateFacturx}
+        onStatusChange={(id, status) => updateStatus.mutate({ id, status })}
         isAdmin={isAdmin} sendingId={sendingId} generatingId={generatingId}
       />
 

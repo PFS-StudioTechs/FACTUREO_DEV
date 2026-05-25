@@ -20,6 +20,7 @@ interface InvoiceFiltersProps {
   isProcessingVoice: boolean;
   onVoice: () => void;
   onNewInvoice: () => void;
+  isMobile?: boolean;
 }
 
 const FILTERS: [FilterKey, string, string][] = [
@@ -35,6 +36,7 @@ export const InvoiceFilters = ({
   companies, selectedCompanyId, setSelectedCompanyId,
   counts, importing, onImport,
   isRecording, isProcessingVoice, onVoice, onNewInvoice,
+  isMobile = false,
 }: InvoiceFiltersProps) => (
   <div style={{
     display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
@@ -100,27 +102,29 @@ export const InvoiceFilters = ({
       </div>
     )}
 
-    <div style={{
-      display: 'flex', background: 'var(--bg-2)',
-      border: '1px solid var(--border-subtle)', borderRadius: 'var(--r-3)', padding: 2, gap: 1,
-    }}>
-      {(['kanban', 'list'] as ViewKey[]).map(k => (
-        <button
-          key={k}
-          onClick={() => setView(k)}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            padding: '4px 10px', borderRadius: 'var(--r-2)',
-            background: view === k ? 'var(--bg-4)' : 'transparent',
-            color: view === k ? 'var(--text-1)' : 'var(--text-3)',
-            fontSize: 12, fontWeight: 500, cursor: 'pointer',
-          }}
-        >
-          <Icon name={k === 'kanban' ? 'layers' : 'flow'} size={13} />
-          {k === 'kanban' ? 'Kanban' : 'Liste'}
-        </button>
-      ))}
-    </div>
+    {!isMobile && (
+      <div style={{
+        display: 'flex', background: 'var(--bg-2)',
+        border: '1px solid var(--border-subtle)', borderRadius: 'var(--r-3)', padding: 2, gap: 1,
+      }}>
+        {(['kanban', 'list'] as ViewKey[]).map(k => (
+          <button
+            key={k}
+            onClick={() => setView(k)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '4px 10px', borderRadius: 'var(--r-2)',
+              background: view === k ? 'var(--bg-4)' : 'transparent',
+              color: view === k ? 'var(--text-1)' : 'var(--text-3)',
+              fontSize: 12, fontWeight: 500, cursor: 'pointer',
+            }}
+          >
+            <Icon name={k === 'kanban' ? 'layers' : 'flow'} size={13} />
+            {k === 'kanban' ? 'Kanban' : 'Liste'}
+          </button>
+        ))}
+      </div>
+    )}
 
     <Button variant="ghost" size="sm" icon="download" onClick={onImport} disabled={importing}>
       {importing ? 'Import…' : 'Importer'}
