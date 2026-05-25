@@ -225,7 +225,7 @@ const Previsionnel = () => {
   };
 
   return (
-    <div style={{ padding: 24, overflowY: 'auto', height: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <div>
@@ -376,10 +376,15 @@ const Previsionnel = () => {
                       </td>
                       <td style={{ padding: '8px 14px', textAlign: 'center' }}>
                         <Input
-                          type="number" min="0" max={workingDays}
+                          type="number" min="0" max={availableDays}
                           className="w-20 mx-auto text-center h-8"
+                          style={{ background: 'var(--bg-3)', color: 'var(--text-1)', border: '1px solid var(--border)' }}
                           value={localDays[`${forecast.id}-${month}`] ?? ""}
-                          onChange={e => handleDayChange(forecast.id, month, e.target.value)}
+                          onChange={e => {
+                            const raw = parseFloat(e.target.value) || 0;
+                            const clamped = Math.min(raw, availableDays);
+                            handleDayChange(forecast.id, month, String(clamped));
+                          }}
                           onBlur={() => handleDayBlur(forecast.id, month)}
                         />
                       </td>
