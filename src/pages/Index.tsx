@@ -352,7 +352,7 @@ const Index = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
-        .select("id, numero_facture, montant_ttc, date_facturation, date_limite_paiement, clients(nom)")
+        .select("id, numero_facture, montant_ttc, date_facturation, date_limite_paiement, status, clients(nom)")
         .order("date_facturation", { ascending: false })
         .limit(20);
       if (error) throw error;
@@ -362,6 +362,7 @@ const Index = () => {
         montant_ttc: number;
         date_facturation: string;
         date_limite_paiement: string;
+        status: string | null;
         clients: { nom: string } | null;
       }>;
     },
@@ -406,8 +407,11 @@ const Index = () => {
     };
   };
 
-  const lateItems   = kanbanRaw.filter(r => new Date(r.date_limite_paiement) < today).map(r => toItem(r, true));
-  const activeItems = kanbanRaw.filter(r => new Date(r.date_limite_paiement) >= today).map(r => toItem(r, false));
+  const kanbanBrouillon = kanbanRaw.filter(r => !r.status || r.status === 'brouillon');
+  const kanbanPaid      = kanbanRaw.filter(r => r.status === 'payée');
+  const kanbanSent      = kanbanRaw.filter(r => r.status === 'envoyée' || r.status === 'générée');
+  const lateItems   = kanbanSent.filter(r => new Date(r.date_limite_paiement) < today).map(r => toItem(r, true));
+  const activeItems = kanbanSent.filter(r => new Date(r.date_limite_paiement) >= today).map(r => toItem(r, false));
 
   /* Monthly chart values */
   const monthLabels = getMonthLabels();
@@ -426,10 +430,10 @@ const Index = () => {
 
   /* Kanban cols */
   const kanbanCols: KanbanColData[] = [
-    { title: 'Brouillons', tone: 'draft', count: 0,                 total: '0',                                       items: [] },
-    { title: 'Envoyées',   tone: 'sent',  count: activeItems.length, total: fmt(activeItems.reduce((s, i) => s + i.amountRaw, 0)), items: activeItems },
-    { title: 'En retard',  tone: 'late',  count: lateItems.length,   total: fmt(lateItems.reduce((s, i) => s + i.amountRaw, 0)),   items: lateItems },
-    { title: 'Payées',     tone: 'paid',  count: 0,                 total: '0',                                       items: [] },
+    { title: 'Brouillons', tone: 'draft', count: kanbanBrouillon.length, total: fmt(kanbanBrouillon.reduce((s, r) => s + r.montant_ttc, 0)), items: [] },
+    { title: 'Envoyées',   tone: 'sent',  count: activeItems.length,     total: fmt(activeItems.reduce((s, i) => s + i.amountRaw, 0)),       items: activeItems },
+    { title: 'En retard',  tone: 'late',  count: lateItems.length,       total: fmt(lateItems.reduce((s, i) => s + i.amountRaw, 0)),         items: lateItems },
+    { title: 'Payées',     tone: 'paid',  count: kanbanPaid.length,      total: fmt(kanbanPaid.reduce((s, r) => s + r.montant_ttc, 0)),      items: [] },
   ];
 
   /* Dynamic todos */

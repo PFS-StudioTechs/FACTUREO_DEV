@@ -319,6 +319,7 @@ const Invoices = () => {
         <ListView
           invoices={filtered} onEdit={openEdit} onDelete={id => deleteMutation.mutate(id)}
           onSend={openSend} onGenerateFacturx={handleGenerateFacturx}
+          onStatusChange={(id, status) => updateStatus.mutate({ id, status })}
           isAdmin={isAdmin} sendingId={sendingId} generatingId={generatingId}
         />
       )}

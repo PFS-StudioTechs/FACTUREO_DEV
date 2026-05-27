@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pill, FacturXBadge } from '@/components/ui/primitives';
+import { FacturXBadge } from '@/components/ui/primitives';
 import { Icon } from '@/components/ui/Icon';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -15,8 +15,21 @@ function getStatus(inv: any): 'draft' | 'sent' | 'late' | 'paid' {
 const STATUS_META = {
   draft: { label: 'Brouillon', tone: 'neutral' as const },
   sent:  { label: 'Envoyée',   tone: 'info'    as const },
-  late:  { label: 'Retard',    tone: 'danger'  as const },
+  late:  { label: 'En retard', tone: 'danger'  as const },
   paid:  { label: 'Payée',     tone: 'success' as const },
+};
+
+const STATUS_OPTIONS = [
+  { value: 'brouillon', label: 'Brouillon' },
+  { value: 'envoyée',   label: 'Envoyée'   },
+  { value: 'payée',     label: 'Payée'     },
+];
+
+const TONE_COLOR: Record<string, string> = {
+  neutral: 'var(--text-3)',
+  info:    'var(--info, #3b82f6)',
+  danger:  'var(--danger, #ef4444)',
+  success: 'var(--success, #22c55e)',
 };
 
 const fmt = (n: number) =>
@@ -28,6 +41,7 @@ interface ListViewProps {
   onDelete: (id: string) => void;
   onSend: (invoice: any) => void;
   onGenerateFacturx: (invoice: any) => void;
+  onStatusChange: (id: string, status: string) => void;
   isAdmin: boolean;
   sendingId: string | null;
   generatingId: string | null;
@@ -56,7 +70,7 @@ const IconBtn = ({
 );
 
 export const ListView = ({
-  invoices, onEdit, onDelete, onSend, onGenerateFacturx, isAdmin, sendingId, generatingId,
+  invoices, onEdit, onDelete, onSend, onGenerateFacturx, onStatusChange, isAdmin, sendingId, generatingId,
 }: ListViewProps) => {
   const isMobile = useIsMobile();
 
@@ -83,7 +97,20 @@ export const ListView = ({
                     {inv.clients?.nom || '—'}
                   </div>
                 </div>
-                <Pill tone={meta.tone} dot size="sm">{meta.label}</Pill>
+                <select
+                  value={inv.status || 'brouillon'}
+                  onChange={e => { e.stopPropagation(); onStatusChange(inv.id, e.target.value); }}
+                  onClick={e => e.stopPropagation()}
+                  style={{
+                    appearance: 'none', WebkitAppearance: 'none',
+                    background: 'var(--bg-3)', border: '1px solid var(--border)',
+                    borderRadius: 'var(--r-2)', padding: '3px 10px 3px 8px',
+                    fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                    color: TONE_COLOR[meta.tone],
+                  }}
+                >
+                  {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
@@ -175,7 +202,20 @@ export const ListView = ({
                     {fmt(inv.montant_ttc)} €
                   </td>
                   <td style={{ padding: '10px 14px' }}>
-                    <Pill tone={meta.tone} dot size="sm">{meta.label}</Pill>
+                    <select
+                      value={inv.status || 'brouillon'}
+                      onChange={e => { e.stopPropagation(); onStatusChange(inv.id, e.target.value); }}
+                      onClick={e => e.stopPropagation()}
+                      style={{
+                        appearance: 'none', WebkitAppearance: 'none',
+                        background: 'var(--bg-3)', border: '1px solid var(--border)',
+                        borderRadius: 'var(--r-2)', padding: '3px 10px 3px 8px',
+                        fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                        color: TONE_COLOR[meta.tone],
+                      }}
+                    >
+                      {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
                   </td>
                   <td style={{ padding: '10px 14px' }}>
                     {(inv.status === 'générée' || inv.status === 'envoyée') && <FacturXBadge size="sm" />}
