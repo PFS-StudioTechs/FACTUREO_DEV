@@ -219,8 +219,8 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
     date_fac = datetime.strptime(d.date_facturation, "%Y-%m-%d").strftime("%Y%m%d")
     date_lim = datetime.strptime(d.date_limite_paiement, "%Y-%m-%d").strftime("%Y%m%d")
 
-    buyer_id  = f"\n        <ram:ID schemeID='0002'>{_he(c.siret)}</ram:ID>" if c.siret else ""
-    buyer_vat = f"\n        <ram:SpecifiedTaxRegistration><ram:ID schemeID='VA'>{_he(c.tva_intracommunautaire)}</ram:ID></ram:SpecifiedTaxRegistration>" if c.tva_intracommunautaire else ""
+    buyer_legal = f"\n        <ram:SpecifiedLegalOrganization><ram:ID schemeID='0002'>{_he(c.siret)}</ram:ID></ram:SpecifiedLegalOrganization>" if c.siret else ""
+    buyer_vat   = f"\n        <ram:SpecifiedTaxRegistration><ram:ID schemeID='VA'>{_he(c.tva_intracommunautaire)}</ram:ID></ram:SpecifiedTaxRegistration>" if c.tva_intracommunautaire else ""
     order_ref = f"\n      <ram:BuyerOrderReferencedDocument><ram:IssuerAssignedID>{_he(d.numero_bon_commande)}</ram:IssuerAssignedID></ram:BuyerOrderReferencedDocument>" if d.numero_bon_commande else ""
 
     if d.lines:
@@ -288,8 +288,10 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
 {line_items_xml}
     <ram:ApplicableHeaderTradeAgreement>
       <ram:SellerTradeParty>
-        <ram:ID schemeID="0002">{_he(e.siret)}</ram:ID>
         <ram:Name>{_he(e.denomination)}</ram:Name>
+        <ram:SpecifiedLegalOrganization>
+          <ram:ID schemeID="0002">{_he(e.siret)}</ram:ID>
+        </ram:SpecifiedLegalOrganization>
         <ram:PostalTradeAddress>
           <ram:PostcodeCode>{_he(e.code_postal)}</ram:PostcodeCode>
           <ram:LineOne>{_he(e.adresse)}</ram:LineOne>
@@ -300,8 +302,8 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
           <ram:ID schemeID="VA">{_he(e.tva_intracommunautaire)}</ram:ID>
         </ram:SpecifiedTaxRegistration>
       </ram:SellerTradeParty>
-      <ram:BuyerTradeParty>{buyer_id}
-        <ram:Name>{_he(c.nom)}</ram:Name>
+      <ram:BuyerTradeParty>
+        <ram:Name>{_he(c.nom)}</ram:Name>{buyer_legal}
         <ram:PostalTradeAddress>
           <ram:PostcodeCode>{_he(c.code_postal)}</ram:PostcodeCode>
           <ram:LineOne>{_he(c.adresse)}</ram:LineOne>
