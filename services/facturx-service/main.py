@@ -272,7 +272,7 @@ def build_facturx_xml(d: InvoiceData) -> bytes:
 
   <rsm:ExchangedDocumentContext>
     <ram:GuidelineSpecifiedDocumentContextParameter>
-      <ram:ID>urn:factur-x.eu:1p0:basic</ram:ID>
+      <ram:ID>urn:cen.eu:en16931:2017</ram:ID>
     </ram:GuidelineSpecifiedDocumentContextParameter>
   </rsm:ExchangedDocumentContext>
 
@@ -627,7 +627,7 @@ async def generate_facturx(
             pdf_bytes,
             xml_bytes,
             flavor="factur-x",
-            level="basic",
+            level="en16931",
             check_xsd=False,
             check_schematron=False,
             xmp_compression=False,
