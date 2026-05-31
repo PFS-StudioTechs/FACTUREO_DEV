@@ -8,8 +8,9 @@ serve(async (req) => {
   }
 
   try {
-    const { recipientEmail, fileName, pdfBase64, emailBody, invoiceNumber } = await req.json();
-    if (!recipientEmail || !pdfBase64) throw new Error("recipientEmail and pdfBase64 are required");
+    const { recipientEmails, recipientEmail, fileName, pdfBase64, emailBody, invoiceNumber } = await req.json();
+    const toEmails: string[] = recipientEmails?.length ? recipientEmails : recipientEmail ? [recipientEmail] : [];
+    if (toEmails.length === 0 || !pdfBase64) throw new Error("recipientEmails and pdfBase64 are required");
 
     const SENDGRID_API_KEY = Deno.env.get("SENDGRID_API_KEY");
     const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "facturation@factureo.fr";
@@ -23,7 +24,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        personalizations: [{ to: [{ email: recipientEmail }] }],
+        personalizations: [{ to: toEmails.map(email => ({ email })) }],
         from: { email: FROM_EMAIL },
         subject: `Facture N° ${invoiceNumber}`,
         content: [{ type: "text/plain", value: emailBody }],
