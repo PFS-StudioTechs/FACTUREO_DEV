@@ -42,7 +42,8 @@ const UserManagement = () => {
       const activeUserIds = new Set(activeProfiles.map((p: any) => p.user_id));
       return roles.filter(r => activeUserIds.has(r.user_id)).map(r => {
         const profile = activeProfiles.find((p: any) => p.user_id === r.user_id);
-        return { ...r, pseudo: profile?.pseudo || "—", email: (profile as any)?.email || "", telephone: (profile as any)?.telephone || "" };
+        const displayName = profile?.pseudo?.trim() || `${(profile as any)?.prenom ?? ''} ${(profile as any)?.nom ?? ''}`.trim() || "—";
+        return { ...r, pseudo: displayName, email: (profile as any)?.email || "", telephone: (profile as any)?.telephone || "" };
       });
     },
     enabled: !!user,
@@ -56,7 +57,7 @@ const UserManagement = () => {
       const { data: roles } = await supabase.from("user_roles").select("user_id");
       const roleUserIds = new Set(roles?.map(r => r.user_id) || []);
       return (allProfiles || []).filter((p: any) => !roleUserIds.has(p.user_id) && !p.archived).map(p => ({
-        user_id: p.user_id, pseudo: p.pseudo || "—", email: (p as any).email || "",
+        user_id: p.user_id, pseudo: p.pseudo?.trim() || `${(p as any).prenom ?? ''} ${(p as any).nom ?? ''}`.trim() || "—", email: (p as any).email || "",
         telephone: (p as any).telephone || "", created_at: p.created_at,
       }));
     },
