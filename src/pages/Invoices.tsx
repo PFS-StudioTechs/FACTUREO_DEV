@@ -170,7 +170,30 @@ const Invoices = () => {
       }
       return invoice;
     },
-    onSuccess: async (invoice) => {
+    onSuccess: async (invoice, form) => {
+      // Sync first line qty → forecast_months if invoice is still editable
+      const status: string = invoice.status ?? 'brouillon';
+      if ((status === 'brouillon' || status === 'envoyée') && form.lines.length > 0) {
+        const firstLineQty = form.lines[0].quantite;
+        const dateF = new Date(form.dateFacturation);
+        const month = dateF.getMonth() + 1;
+        const invoiceYear = dateF.getFullYear();
+        const { data: forecastData } = await (supabase as any)
+          .from("forecasts")
+          .select("id")
+          .eq("user_id", user!.id)
+          .eq("year", invoiceYear)
+          .order("created_at")
+          .limit(1)
+          .maybeSingle();
+        if (forecastData) {
+          await supabase.from("forecast_months").upsert(
+            { forecast_id: forecastData.id, user_id: user!.id, month, planned_days: firstLineQty } as any,
+            { onConflict: "forecast_id,month" }
+          );
+          queryClient.invalidateQueries({ queryKey: ["forecast_months"] });
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success(editingInvoice ? "Facture mise à jour" : "Facture créée — génération Factur-X en cours…");

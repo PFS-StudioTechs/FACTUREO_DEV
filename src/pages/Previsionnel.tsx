@@ -62,7 +62,7 @@ const toDateStr = (d: Date) => {
 
 type Forecast = { id: string; mission_name: string; tjm: number; year: number };
 type ForecastMonth = { id: string; forecast_id: string; month: number; planned_days: number };
-type VacationDay = { id: string; user_id: string; date: string; created_at: string };
+type VacationDay = { id: string; user_id: string; date: string; duration: number; created_at: string };
 
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(v);
@@ -115,20 +115,31 @@ const Previsionnel = () => {
     enabled: !!user,
   });
 
-  const vacationDatesForCalendar = vacationDaysData.map(v => {
-    const [y, m, d] = v.date.split("-").map(Number);
-    return new Date(y, m - 1, d);
-  });
+  const fullDayVacationDates = vacationDaysData
+    .filter(v => (v.duration ?? 1) >= 1)
+    .map(v => { const [y, m, d] = v.date.split("-").map(Number); return new Date(y, m - 1, d); });
+
+  const halfDayDates = vacationDaysData
+    .filter(v => (v.duration ?? 1) < 1)
+    .map(v => { const [y, m, d] = v.date.split("-").map(Number); return new Date(y, m - 1, d); });
+
+  const vacationDatesForCalendar = [...fullDayVacationDates, ...halfDayDates];
 
   const toggleVacation = useMutation({
     mutationFn: async (date: Date) => {
       const dateStr = toDateStr(date);
       const existing = vacationDaysData.find(v => v.date === dateStr);
-      if (existing) {
-        const { error } = await (supabase as any).from("vacation_days").delete().eq("id", existing.id);
+      if (!existing) {
+        // No vacation → full day
+        const { error } = await (supabase as any).from("vacation_days").insert({ user_id: user!.id, date: dateStr, duration: 1.0 });
+        if (error) throw error;
+      } else if ((existing.duration ?? 1) >= 1) {
+        // Full day → half day
+        const { error } = await (supabase as any).from("vacation_days").update({ duration: 0.5 }).eq("id", existing.id);
         if (error) throw error;
       } else {
-        const { error } = await (supabase as any).from("vacation_days").insert({ user_id: user!.id, date: dateStr });
+        // Half day → remove
+        const { error } = await (supabase as any).from("vacation_days").delete().eq("id", existing.id);
         if (error) throw error;
       }
     },
@@ -138,7 +149,8 @@ const Previsionnel = () => {
 
   const handleCalendarSelect = (newDates: Date[] | undefined) => {
     if (!newDates) return;
-    const oldStrs = new Set(vacationDatesForCalendar.map(toDateStr));
+    // Compare against full-day dates only (half-day dates appear as "new additions")
+    const oldStrs = new Set(fullDayVacationDates.map(toDateStr));
     const newStrs = new Set(newDates.map(toDateStr));
     let changedStr: string | undefined;
     for (const s of newStrs) if (!oldStrs.has(s)) { changedStr = s; break; }
@@ -150,7 +162,9 @@ const Previsionnel = () => {
   };
 
   const getVacationCount = (month: number) =>
-    vacationDaysData.filter(v => { const [y, m] = v.date.split("-").map(Number); return y === year && m === month; }).length;
+    vacationDaysData
+      .filter(v => { const [y, m] = v.date.split("-").map(Number); return y === year && m === month; })
+      .reduce((sum, v) => sum + (v.duration ?? 1), 0);
 
   const getAvailableDays = (month: number) => Math.max(0, getWorkingDays(year, month) - getVacationCount(month));
 
@@ -181,15 +195,34 @@ const Previsionnel = () => {
   });
 
   const updateDays = useMutation({
-    mutationFn: async ({ forecastId, month, days }: { forecastId: string; month: number; days: number }) => {
+    mutationFn: async ({ forecastId, month, days, y }: { forecastId: string; month: number; days: number; y: number }) => {
       const { error } = await supabase.from("forecast_months").upsert(
         { forecast_id: forecastId, user_id: user!.id, month, planned_days: days },
         { onConflict: "forecast_id,month" }
       );
       if (error) throw error;
+
+      // Sync to invoice first line if status allows
+      const mm = String(month).padStart(2, "0");
+      const { data: inv } = await (supabase as any)
+        .from("invoices")
+        .select("id, invoice_lines(id, position)")
+        .eq("user_id", user!.id)
+        .gte("date_facturation", `${y}-${mm}-01`)
+        .lte("date_facturation", `${y}-${mm}-31`)
+        .in("status", ["brouillon", "envoyée"])
+        .order("date_facturation")
+        .limit(1)
+        .maybeSingle();
+
+      if (inv?.invoice_lines?.length) {
+        const firstLine = [...inv.invoice_lines].sort((a: any, b: any) => a.position - b.position)[0];
+        await supabase.from("invoice_lines").update({ quantite: days } as any).eq("id", firstLine.id);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["forecast_months"] });
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
   });
@@ -209,15 +242,15 @@ const Previsionnel = () => {
 
   const handleDayBlur = useCallback((forecastId: string, month: number) => {
     const days = localDays[`${forecastId}-${month}`] || 0;
-    updateDays.mutate({ forecastId, month, days });
-  }, [localDays, updateDays]);
+    updateDays.mutate({ forecastId, month, days, y: year });
+  }, [localDays, updateDays, year]);
 
   const getPlannedDays = (forecastId: string, month: number) => localDays[`${forecastId}-${month}`] || 0;
   const getMonthlyCa = (forecastId: string, month: number, tjm: number) => getPlannedDays(forecastId, month) * tjm;
   const getTotalCaForForecast = (forecast: Forecast) =>
     Array.from({ length: 12 }, (_, i) => getMonthlyCa(forecast.id, i + 1, forecast.tjm)).reduce((a, b) => a + b, 0);
   const grandTotal = forecasts.reduce((sum, f) => sum + getTotalCaForForecast(f), 0);
-  const totalVacationYear = vacationDaysData.length;
+  const totalVacationYear = vacationDaysData.reduce((sum, v) => sum + (v.duration ?? 1), 0);
 
   const thStyle: React.CSSProperties = {
     textAlign: 'left', padding: '10px 14px', fontSize: 11,
@@ -376,7 +409,7 @@ const Previsionnel = () => {
                       </td>
                       <td style={{ padding: '8px 14px', textAlign: 'center' }}>
                         <Input
-                          type="number" min="0" max={availableDays}
+                          type="number" min="0" step={0.5} max={availableDays}
                           className="w-20 mx-auto text-center h-8"
                           style={{ background: 'var(--bg-3)', color: 'var(--text-1)', border: '1px solid var(--border)' }}
                           value={localDays[`${forecast.id}-${month}`] ?? ""}
@@ -423,7 +456,7 @@ const Previsionnel = () => {
           </DialogHeader>
           {calendarMonth !== null && (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground text-center">Cliquez sur un jour ouvré pour le marquer / retirer comme congé</p>
+              <p className="text-sm text-muted-foreground text-center">1 clic = journée · 2 clics = demi-journée · 3 clics = retirer</p>
               {getVacationCount(calendarMonth + 1) > 0 && (
                 <div className="flex items-center justify-center gap-2 text-sm text-orange-600 font-medium">
                   <Icon name="calendar" size={14} color="var(--warning)" />
@@ -434,7 +467,7 @@ const Previsionnel = () => {
                 <Calendar
                   mode="multiple"
                   month={new Date(year, calendarMonth)}
-                  selected={vacationDatesForCalendar}
+                  selected={fullDayVacationDates}
                   onSelect={handleCalendarSelect}
                   locale={fr}
                   className="rounded-md border"
@@ -445,8 +478,11 @@ const Previsionnel = () => {
                     const holidays = getFrenchHolidays(year);
                     return holidays.some(h => h.getDate() === date.getDate() && h.getMonth() === date.getMonth());
                   }}
-                  modifiers={{ vacation: vacationDatesForCalendar }}
-                  modifiersClassNames={{ vacation: "bg-orange-100 text-orange-700 hover:bg-orange-200 font-semibold rounded-full" }}
+                  modifiers={{ vacation: fullDayVacationDates, halfDay: halfDayDates }}
+                  modifiersClassNames={{
+                    vacation: "bg-orange-100 text-orange-700 hover:bg-orange-200 font-semibold rounded-full",
+                    halfDay: "bg-orange-50 text-orange-500 hover:bg-orange-100 font-medium border border-dashed border-orange-400 rounded-sm",
+                  }}
                 />
               </div>
             </div>
