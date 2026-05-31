@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Button as ShadButton } from "@/components/ui/button";
 import { Input as ShadInput } from "@/components/ui/input";
-import { Loader2, Send } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2, Send, Eye, Pencil } from "lucide-react";
 import { InvoiceFilters, type FilterKey, type ViewKey } from "@/components/invoices/InvoiceFilters";
 import { KanbanBoard } from "@/components/invoices/KanbanBoard";
 import { ListView } from "@/components/invoices/ListView";
@@ -43,6 +44,9 @@ const Invoices = () => {
   const [sendInvoice,     setSendInvoice]     = useState<any>(null);
   const [recipientEmails, setRecipientEmails] = useState<string[]>([]);
   const [emailInput,      setEmailInput]      = useState('');
+  const [emailBody,        setEmailBody]        = useState('');
+  const [editingEmailBody, setEditingEmailBody] = useState(false);
+  const [loadingEmailBody, setLoadingEmailBody] = useState(false);
   const [isRecording,     setIsRecording]     = useState(false);
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
@@ -210,14 +214,26 @@ const Invoices = () => {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const loadEmailBody = async (inv: any) => {
+    setLoadingEmailBody(true);
+    const moisPrestation = new Date(inv.date_facturation).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    setEmailBody(`Bonjour,\n\nVeuillez trouver ci-joint la facture N° ${inv.numero_facture} pour ${moisPrestation}.\n\nCordialement`);
+    try {
+      const { data: company } = await supabase.from("companies").select("*").eq("id", inv.company_id).single();
+      const { data: client }  = await supabase.from("clients").select("*").eq("id", inv.client_id).single();
+      if (company && client) {
+        const { data: emailData } = await supabase.functions.invoke("generate-invoice-email", { body: { invoiceData: { numero_facture: inv.numero_facture, client_nom: client.nom, nom_contact: company.nom_contact, nombre_jours: inv.nombre_jours, montant_ttc: inv.montant_ttc, mois_prestation: moisPrestation, descriptif_mission: inv.descriptif_mission, designation: inv.designation } } });
+        if (emailData?.emailBody) setEmailBody(emailData.emailBody);
+      }
+    } catch (_) {}
+    setLoadingEmailBody(false);
+  };
+
   const handleSendInvoice = async () => {
     const allEmails = emailInput.trim() ? [...new Set([...recipientEmails, emailInput.trim()])] : recipientEmails;
     if (!sendInvoice || allEmails.length === 0) return;
     setSendingId(sendInvoice.id);
     try {
-      const { data: company } = await supabase.from("companies").select("*").eq("id", sendInvoice.company_id).single();
-      const { data: client }  = await supabase.from("clients").select("*").eq("id", sendInvoice.client_id).single();
-      if (!company || !client) throw new Error("Données entreprise/client introuvables");
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
       const anonKey     = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
       const { data: { session: s } } = await supabase.auth.getSession();
@@ -226,12 +242,6 @@ const Invoices = () => {
       const buf = await facturxRes.arrayBuffer();
       let bin = ""; new Uint8Array(buf).forEach(b => bin += String.fromCharCode(b));
       const pdfBase64 = btoa(bin);
-      const moisPrestation = new Date(sendInvoice.date_facturation).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-      let emailBody = `Bonjour,\n\nVeuillez trouver ci-joint la facture N° ${sendInvoice.numero_facture} pour ${moisPrestation}.\n\nCordialement`;
-      try {
-        const { data: emailData } = await supabase.functions.invoke("generate-invoice-email", { body: { invoiceData: { numero_facture: sendInvoice.numero_facture, client_nom: client.nom, nom_contact: company.nom_contact, nombre_jours: sendInvoice.nombre_jours, montant_ttc: sendInvoice.montant_ttc, mois_prestation: moisPrestation, descriptif_mission: sendInvoice.descriptif_mission, designation: sendInvoice.designation } } });
-        if (emailData?.emailBody) emailBody = emailData.emailBody;
-      } catch (_) {}
       const sendRes = await fetch(`${supabaseUrl}/functions/v1/send-invoice-email`, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": `Bearer ${s?.access_token ?? ""}`, "apikey": anonKey }, body: JSON.stringify({ recipientEmails: allEmails, fileName: `${sendInvoice.numero_facture}.pdf`, pdfBase64, emailBody, invoiceNumber: sendInvoice.numero_facture }) });
       if (!sendRes.ok) { const e = await sendRes.json().catch(() => ({ error: "Erreur inconnue" })); throw new Error(e.error || `Erreur envoi (${sendRes.status})`); }
       await supabase.from("invoices").update({ status: "envoyée", sent_at: new Date().toISOString() }).eq("id", sendInvoice.id);
@@ -309,7 +319,15 @@ const Invoices = () => {
   };
 
   const openEdit = (inv: any) => { setSelectedCompanyId(inv.company_id); setEditingInvoice(inv); setModalOpen(true); };
-  const openSend = (inv: any) => { setSendInvoice(inv); setRecipientEmails([]); setEmailInput(""); setSendDialogOpen(true); };
+  const openSend = (inv: any) => {
+    setSendInvoice(inv);
+    setRecipientEmails([]);
+    setEmailInput("");
+    setEmailBody("");
+    setEditingEmailBody(false);
+    setSendDialogOpen(true);
+    loadEmailBody(inv);
+  };
 
   const addEmail = (raw: string) => {
     const emails = raw.split(/[,;\s]+/).map(e => e.trim()).filter(e => e.includes("@"));
@@ -406,6 +424,32 @@ const Invoices = () => {
                 placeholder="email@client.com — Entrée pour ajouter"
               />
               <p className="text-xs text-muted-foreground">Tapez un email et appuyez sur Entrée pour ajouter plusieurs destinataires</p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Message</Label>
+                {loadingEmailBody ? (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" />Génération…</span>
+                ) : (
+                  <button type="button" className="text-xs flex items-center gap-1 text-primary hover:underline" onClick={() => setEditingEmailBody(e => !e)}>
+                    {editingEmailBody ? <><Eye className="w-3 h-3" />Aperçu</> : <><Pencil className="w-3 h-3" />Modifier</>}
+                  </button>
+                )}
+              </div>
+              {editingEmailBody ? (
+                <Textarea
+                  value={emailBody}
+                  onChange={e => setEmailBody(e.target.value)}
+                  rows={8}
+                  className="text-sm font-mono resize-none"
+                />
+              ) : (
+                <div className="rounded-md border bg-muted/40 px-3 py-2 text-sm whitespace-pre-wrap min-h-[100px] text-foreground">
+                  {loadingEmailBody
+                    ? <span className="text-muted-foreground italic">Génération du message…</span>
+                    : emailBody || <span className="text-muted-foreground italic">Aucun message</span>}
+                </div>
+              )}
             </div>
             <ShadButton className="w-full" disabled={(recipientEmails.length === 0 && !emailInput.trim()) || sendingId !== null} onClick={handleSendInvoice}>
               {sendingId ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Envoi…</> : <><Send className="w-4 h-4 mr-2" />Envoyer</>}
