@@ -46,6 +46,10 @@ serve(async (req) => {
       .eq("invoice_id", invoice_id)
       .order("position");
 
+    const firstLine = lines?.[0];
+    const nombreJours = invoice.nombre_jours || firstLine?.quantite || null;
+    const tjm = invoice.tjm || firstLine?.prix_unitaire_ht || null;
+
     const payload = {
       invoice_id: invoice.id,
       user_id: invoice.user_id,
@@ -77,8 +81,8 @@ serve(async (req) => {
       },
       designation: invoice.designation,
       descriptif_mission: invoice.descriptif_mission,
-      nombre_jours: invoice.nombre_jours,
-      tjm: invoice.tjm,
+      nombre_jours: nombreJours,
+      tjm: tjm,
       montant_ht: invoice.montant_ht,
       taux_tva: invoice.taux_tva,
       montant_tva: invoice.montant_tva,
