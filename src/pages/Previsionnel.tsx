@@ -206,18 +206,26 @@ const Previsionnel = () => {
       const mm = String(month).padStart(2, "0");
       const { data: inv } = await (supabase as any)
         .from("invoices")
-        .select("id, invoice_lines(id, position)")
+        .select("id")
         .eq("user_id", user!.id)
         .gte("date_facturation", `${y}-${mm}-01`)
         .lte("date_facturation", `${y}-${mm}-31`)
         .in("status", ["brouillon", "envoyée"])
-        .order("date_facturation")
+        .order("date_facturation", { ascending: true })
         .limit(1)
         .maybeSingle();
 
-      if (inv?.invoice_lines?.length) {
-        const firstLine = [...inv.invoice_lines].sort((a: any, b: any) => a.position - b.position)[0];
-        await supabase.from("invoice_lines").update({ quantite: days } as any).eq("id", firstLine.id);
+      if (inv?.id) {
+        const { data: firstLine } = await supabase
+          .from("invoice_lines")
+          .select("id")
+          .eq("invoice_id", inv.id)
+          .order("position", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (firstLine?.id) {
+          await supabase.from("invoice_lines").update({ quantite: days } as any).eq("id", firstLine.id);
+        }
       }
     },
     onSuccess: () => {
