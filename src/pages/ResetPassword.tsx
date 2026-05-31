@@ -17,12 +17,23 @@ const ResetPassword = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check for recovery token in URL hash
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
     const hash = window.location.hash;
-    if (!hash.includes("type=recovery")) {
+
+    if (code) {
+      // PKCE flow — exchange code for session before allowing password update
+      supabase.auth.exchangeCodeForSession(window.location.search).then(({ error }) => {
+        if (error) {
+          toast.error("Lien invalide ou expiré.");
+          navigate("/auth", { replace: true });
+        }
+      });
+    } else if (!hash.includes("type=recovery")) {
       toast.error("Lien de réinitialisation invalide ou expiré.");
+      navigate("/auth", { replace: true });
     }
-  }, []);
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
