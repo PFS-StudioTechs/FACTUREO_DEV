@@ -325,6 +325,18 @@ const CompleteProfile = () => {
               {loading ? "Enregistrement…" : "Accéder à Facturéo"}
               {!loading && <Icon name="arrowRight" size={16} />}
             </button>
+
+            <div style={{ marginTop: 16, textAlign: "center" }}>
+              <button
+                type="button"
+                onClick={async () => { await supabase.auth.signOut(); navigate("/auth", { replace: true }); }}
+                style={{ fontSize: 13, color: "var(--text-3)", cursor: "pointer", background: "none", border: "none", padding: 0 }}
+                onMouseEnter={e => { e.currentTarget.style.color = "var(--accent-bright)"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "var(--text-3)"; }}
+              >
+                Déjà un compte ? Se connecter
+              </button>
+            </div>
           </form>
         </div>
       </div>
