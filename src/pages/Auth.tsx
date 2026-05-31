@@ -94,7 +94,7 @@ const Auth = () => {
 
   const handleSignup = async () => {
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -110,6 +110,10 @@ const Auth = () => {
     if (error) {
       toast.error(error.message);
     } else {
+      // Supabase returns fake success when email already exists (unconfirmed) — resend explicitly
+      if (data.user && data.user.identities?.length === 0) {
+        await supabase.auth.resend({ type: "signup", email, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } });
+      }
       setAwaitingEmail(true);
       try {
         await supabase.functions.invoke("notify-admin-new-signup", {
