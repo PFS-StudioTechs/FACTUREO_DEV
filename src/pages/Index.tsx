@@ -480,7 +480,7 @@ const Index = () => {
       <HeroCTA onCreate={() => navigate('/factures')} />
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: isMobile ? 8 : 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: isMobile ? 8 : 12 }}>
         <KPI
           label="CA réalisé"
           value={fmt(stats?.totalHT || 0)}

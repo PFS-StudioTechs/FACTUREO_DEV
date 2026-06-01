@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,6 +71,7 @@ const DetailSection = ({ title, children }: { title: string; children: React.Rea
 const Companies = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyCompany);
@@ -194,8 +196,9 @@ const Companies = () => {
 
       {/* 2-col body */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {/* Left list */}
-        <div style={{ width: 280, flexShrink: 0, borderRight: '1px solid var(--border)', overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {/* Left list - full width on mobile when no company selected */}
+        {(!isMobile || !selectedCompany) && (
+        <div style={{ width: isMobile ? '100%' : 280, flexShrink: 0, borderRight: isMobile ? 'none' : '1px solid var(--border)', overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {isLoading ? (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>Chargement…</div>
           ) : companies.length === 0 ? (
@@ -232,9 +235,25 @@ const Companies = () => {
             );
           })}
         </div>
+        )}
 
-        {/* Right detail */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        {/* Right detail - full width on mobile when company selected */}
+        {(!isMobile || selectedCompany) && (
+        <div style={{ flex: 1, overflowY: 'auto', padding: isMobile ? 16 : 24 }}>
+          {isMobile && selectedCompany && (
+            <button
+              onClick={() => setSelectedCompany(null)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                color: 'var(--accent-bright)', fontSize: 13, fontWeight: 500,
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '0 0 16px', marginBottom: 4,
+              }}
+            >
+              <Icon name="arrowRight" size={14} style={{ transform: 'rotate(180deg)' }} />
+              Retour
+            </button>
+          )}
           {!selectedCompany ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 12, color: 'var(--text-3)' }}>
               <Icon name="building" size={40} />
@@ -278,6 +297,7 @@ const Companies = () => {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Dialog */}
