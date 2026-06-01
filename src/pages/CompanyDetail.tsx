@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -70,10 +70,24 @@ const SectionCard = ({ title, items }: { title: string; items: { label: string; 
 const CompanyDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyCompany);
+  const [stripeLoading, setStripeLoading] = useState(false);
+
+  useEffect(() => {
+    const stripeParam = searchParams.get("stripe");
+    if (stripeParam === "done" && id) {
+      supabase.functions.invoke("stripe-connect-status", { body: { company_id: id } }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["company", id] });
+        const next = new URLSearchParams(searchParams);
+        next.delete("stripe");
+        setSearchParams(next, { replace: true });
+      });
+    }
+  }, [id]);
 
   const { data: company, isLoading } = useQuery({
     queryKey: ["company", id],
@@ -234,6 +248,60 @@ const CompanyDetail = () => {
               { label: "IBAN", value: company.code_iban, mono: true },
             ]}
           />
+
+          {/* Stripe Connect */}
+          {(() => {
+            const stripeOnboardingDone = (company as Record<string, unknown>).stripe_onboarding_done as boolean;
+            return (
+              <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-4)', overflow: 'hidden' }}>
+                <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
+                  Paiements en ligne (Stripe)
+                </div>
+                <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                  {stripeOnboardingDone ? (
+                    <>
+                      <div>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--green-subtle, #dcfce7)', color: 'var(--green, #16a34a)', fontSize: 12, fontWeight: 600, padding: '3px 10px', borderRadius: 999 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
+                          Stripe connecté
+                        </span>
+                        <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '8px 0 0' }}>
+                          Les paiements en ligne sont activés. Vos clients peuvent payer directement depuis leurs factures.
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 12, color: 'var(--text-3)', margin: 0, maxWidth: 400 }}>
+                        Connectez votre compte Stripe pour permettre à vos clients de payer en ligne directement depuis leurs factures.
+                      </p>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={stripeLoading}
+                        onClick={async () => {
+                          setStripeLoading(true);
+                          try {
+                            const { data, error } = await supabase.functions.invoke("stripe-connect-start", {
+                              body: { company_id: id },
+                            });
+                            if (error) throw error;
+                            if (data?.url) window.location.href = data.url;
+                          } catch (err) {
+                            toast.error("Impossible de démarrer la connexion Stripe");
+                          } finally {
+                            setStripeLoading(false);
+                          }
+                        }}
+                      >
+                        {stripeLoading ? "Redirection…" : "Connecter Stripe"}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

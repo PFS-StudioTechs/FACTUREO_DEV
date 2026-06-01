@@ -24,17 +24,33 @@ serve(async (req) => {
 
     const { data: invoice, error: fetchError } = await supabase
       .from("invoices")
-      .select("id, numero_facture, montant_ttc, client_id, clients(email, nom)")
+      .select("id, numero_facture, montant_ttc, client_id, company_id, clients(email, nom)")
       .eq("id", invoice_id)
       .single();
 
     if (fetchError || !invoice) throw new Error(`Invoice not found: ${fetchError?.message}`);
 
+    // Load company to get stripe_account_id
+    const { data: company, error: companyError } = await supabase
+      .from("companies")
+      .select("stripe_account_id")
+      .eq("id", invoice.company_id)
+      .single();
+
+    if (companyError || !company) throw new Error(`Company not found: ${companyError?.message}`);
+
+    const stripeAccountId = (company as Record<string, unknown>).stripe_account_id as string | null;
+    if (!stripeAccountId) {
+      return new Response(JSON.stringify({ error: "STRIPE_NOT_CONNECTED" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const montantCentimes = Math.round(Number(invoice.montant_ttc) * 100);
     if (montantCentimes <= 0) throw new Error("montant_ttc must be positive");
 
     const clientEmail = (invoice.clients as { email?: string; nom?: string } | null)?.email;
-    const clientNom = (invoice.clients as { email?: string; nom?: string } | null)?.nom ?? "";
 
     const params = new URLSearchParams();
     params.append("mode", "payment");
@@ -53,6 +69,7 @@ serve(async (req) => {
       headers: {
         Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
         "Content-Type": "application/x-www-form-urlencoded",
+        "Stripe-Account": stripeAccountId,
       },
       body: params.toString(),
     });

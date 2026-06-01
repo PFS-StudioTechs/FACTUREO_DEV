@@ -59,6 +59,10 @@ serve(async (req) => {
 
     const event = JSON.parse(payload);
 
+    if (event.account) {
+      console.log("Connected account event:", event.account, "type:", event.type);
+    }
+
     if (event.type === "checkout.session.completed") {
       const session = event.data?.object;
       const invoice_id = session?.metadata?.invoice_id;
