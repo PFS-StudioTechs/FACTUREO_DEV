@@ -107,7 +107,7 @@ export const SideSheet = ({
 
       <aside style={{
         position: 'absolute', top: 0, right: 0, bottom: 0,
-        width: 440, zIndex: 10,
+        width: 'min(440px, 100%)', zIndex: 10,
         background: 'var(--bg-2)',
         borderLeft: '1px solid var(--border)',
         boxShadow: '-12px 0 40px rgba(0,0,0,.30)',

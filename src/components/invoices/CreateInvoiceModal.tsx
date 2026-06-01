@@ -246,7 +246,7 @@ export const CreateInvoiceModal = ({
         position: 'fixed', inset: 0, zIndex: 100,
         background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 24, animation: 'fade-in 200ms ease',
+        padding: isMobile ? 8 : 24, animation: 'fade-in 200ms ease',
       }}
       onClick={onClose}
     >
@@ -396,10 +396,12 @@ export const CreateInvoiceModal = ({
 
               {/* Lines table */}
               <div style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 'var(--r-3)', overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
                 {/* Table header */}
                 <div style={{
                   display: 'grid',
                   gridTemplateColumns: '1fr 54px 72px 80px 54px 68px 72px 28px',
+                  minWidth: 520,
                   gap: 6, padding: '8px 10px',
                   borderBottom: '1px solid var(--border)',
                   fontSize: 10.5, fontWeight: 600, color: 'var(--text-3)',
@@ -425,6 +427,7 @@ export const CreateInvoiceModal = ({
                         gap: 6, padding: '8px 10px',
                         borderBottom: '1px solid var(--border-subtle)',
                         alignItems: 'center',
+                        minWidth: 520,
                       }}>
                         <input
                           value={l.designation}
@@ -501,6 +504,7 @@ export const CreateInvoiceModal = ({
                     </div>
                   );
                 })}
+                </div>
 
                 {/* Add line + totals */}
                 <div style={{ padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

@@ -59,7 +59,7 @@ const AppShell = () => {
           theme={theme}
           onTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
         />
-        <main style={{ flex: 1, overflowY: 'auto', paddingBottom: isMobile ? 56 : 0 }}>
+        <main style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: isMobile ? 56 : 0 }}>
           <Outlet />
         </main>
       </div>
