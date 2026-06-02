@@ -1,82 +1,84 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
-async function verifyStripeSignature(
-  payload: string,
-  sigHeader: string,
-  secret: string
-): Promise<boolean> {
-  const parts = sigHeader.split(",").reduce<Record<string, string>>((acc, part) => {
-    const [k, v] = part.split("=");
-    acc[k] = v;
-    return acc;
-  }, {});
+// --- Vérification de signature Stripe (Deno / Web Crypto API, sans SDK) ---
+const encoder = new TextEncoder();
 
-  const timestamp = parts["t"];
-  const signatures = sigHeader
-    .split(",")
-    .filter((p) => p.startsWith("v1="))
-    .map((p) => p.slice(3));
-
-  if (!timestamp || signatures.length === 0) return false;
-
-  const signedPayload = `${timestamp}.${payload}`;
-  const keyData = new TextEncoder().encode(secret);
-  const msgData = new TextEncoder().encode(signedPayload);
-
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  const signatureBuffer = await crypto.subtle.sign("HMAC", cryptoKey, msgData);
-  const computedHex = Array.from(new Uint8Array(signatureBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  return signatures.some((sig) => sig === computedHex);
+function constantTimeEqual(a: string, b: string): boolean {
+  const aBytes = encoder.encode(a);
+  const bBytes = encoder.encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) diff |= aBytes[i] ^ bBytes[i];
+  return diff === 0;
 }
 
-serve(async (req) => {
-  try {
-    const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-    if (!STRIPE_WEBHOOK_SECRET) {
-      console.error("STRIPE_WEBHOOK_SECRET not configured");
-      return new Response("Configuration error", { status: 500 });
-    }
+function toHex(buf: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
-    const sigHeader = req.headers.get("stripe-signature") ?? "";
-    const payload = await req.text();
+async function verifyStripeSignature(
+  rawBody: string,
+  sigHeader: string | null,
+  secret: string,
+  toleranceSeconds = 300,
+): Promise<boolean> {
+  if (!sigHeader) return false;
+  const parts = sigHeader.split(",");
+  let timestamp = "";
+  let v1 = "";
+  for (const part of parts) {
+    const [key, value] = part.split("=");
+    if (key === "t") timestamp = value;
+    if (key === "v1") v1 = value;
+  }
+  if (!timestamp || !v1) return false;
+  const now = Math.floor(Date.now() / 1000);
+  const ts = parseInt(timestamp, 10);
+  if (Number.isNaN(ts) || Math.abs(now - ts) > toleranceSeconds) return false;
+  const signedPayload = `${timestamp}.${rawBody}`;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sigBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(signedPayload));
+  return constantTimeEqual(toHex(sigBuffer), v1);
+}
 
-    const valid = await verifyStripeSignature(payload, sigHeader, STRIPE_WEBHOOK_SECRET);
-    if (!valid) {
-      console.error("Invalid Stripe signature");
-      return new Response("Invalid signature", { status: 400 });
-    }
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
 
-    const event = JSON.parse(payload);
+Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-    if (event.account) {
-      console.log("Connected account event:", event.account, "type:", event.type);
-    }
+  // 1. Lire le body BRUT en premier, AVANT tout JSON.parse
+  const rawBody = await req.text();
+  const sigHeader = req.headers.get("stripe-signature");
+  const secret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
 
-    if (event.type === "checkout.session.completed") {
-      const session = event.data?.object;
-      const invoice_id = session?.metadata?.invoice_id;
+  // 2. Vérifier la signature sur le body brut
+  const valid = await verifyStripeSignature(rawBody, sigHeader, secret);
+  if (!valid) {
+    return new Response(JSON.stringify({ error: "invalid signature" }), { status: 400 });
+  }
 
-      if (!invoice_id) {
-        console.error("checkout.session.completed: missing metadata.invoice_id");
-        return new Response("OK", { status: 200 });
-      }
+  // 3. SEULEMENT MAINTENANT, parser le JSON
+  const event = JSON.parse(rawBody);
 
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
+  // 4. Traiter l'event
+  if (event.type === "checkout.session.completed") {
+    const invoiceId = event.data?.object?.metadata?.invoice_id;
+    const connectedAccount = event.account ?? null;
 
+    if (invoiceId) {
       const { error } = await supabase
         .from("invoices")
         .update({
@@ -84,22 +86,19 @@ serve(async (req) => {
           paid_at: new Date().toISOString(),
           reminder_level: 0,
         })
-        .eq("id", invoice_id);
+        .eq("id", invoiceId);
 
       if (error) {
-        console.error("DB update failed for invoice", invoice_id, error.message);
-        return new Response("DB error", { status: 500 });
+        console.error("DB update failed for invoice", invoiceId, error.message);
+        return new Response(JSON.stringify({ error: "db error" }), { status: 500 });
       }
-
-      console.log("Invoice marked paid:", invoice_id);
-    } else {
-      console.log("Ignored Stripe event:", event.type);
     }
 
-    return new Response("OK", { status: 200 });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("stripe-webhook error:", message);
-    return new Response("Internal error", { status: 500 });
+    console.log("paid", { invoiceId, connectedAccount });
+  } else {
+    console.log("ignored event", event.type);
   }
+
+  // 5. Répondre 200
+  return new Response(JSON.stringify({ received: true }), { status: 200 });
 });
