@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Button, Pill, Avatar, Money } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/Icon";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Tables } from "@/integrations/supabase/types";
 import SiretLookupField from "@/components/ui/SiretLookupField";
 
@@ -19,7 +20,7 @@ type Client = Tables<"clients">;
 const fmtTjm = (n: number) =>
   new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
 
-const ClientCard = ({ client, onEdit, onDelete }: { client: Client; onEdit: (c: Client) => void; onDelete: (id: string) => void }) => (
+const ClientCard = ({ client, onEdit, onDelete, isMobile }: { client: Client; onEdit: (c: Client) => void; onDelete: (id: string) => void; isMobile: boolean }) => (
   <div
     style={{
       background: 'var(--bg-2)', border: '1px solid var(--border)',
@@ -62,7 +63,8 @@ const ClientCard = ({ client, onEdit, onDelete }: { client: Client; onEdit: (c: 
             key={icon}
             onClick={() => icon === 'edit' ? onEdit(client) : onDelete(client.id)}
             style={{
-              width: 28, height: 28, borderRadius: 'var(--r-2)',
+              width: 28, height: 28, minWidth: isMobile ? 44 : 28, minHeight: isMobile ? 44 : 28,
+              borderRadius: 'var(--r-2)',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               color: icon === 'trash' ? 'var(--danger)' : 'var(--text-3)', cursor: 'pointer',
             }}
@@ -79,6 +81,7 @@ const ClientCard = ({ client, onEdit, onDelete }: { client: Client; onEdit: (c: 
 
 const Clients = () => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -239,8 +242,12 @@ const Clients = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+      <div style={{
+        padding: isMobile ? '12px 16px' : '16px 24px', borderBottom: '1px solid var(--border)',
+        display: 'flex', flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center', gap: 12, flexWrap: isMobile ? 'nowrap' : 'wrap',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: isMobile ? undefined : 1 }}>
           <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em' }}>Clients</h1>
           <Pill>{clients.length}</Pill>
         </div>
@@ -250,31 +257,37 @@ const Clients = () => {
           onChange={e => setSearch(e.target.value)}
           placeholder="Nom, SIRET…"
           style={{
-            width: 240, padding: '7px 12px', background: 'var(--bg-3)',
+            width: isMobile ? '100%' : 240, padding: '7px 12px', background: 'var(--bg-3)',
             border: '1px solid var(--border)', borderRadius: 'var(--r-3)',
-            color: 'var(--text-1)', fontSize: 13, outline: 'none',
+            color: 'var(--text-1)', fontSize: isMobile ? 16 : 13, outline: 'none',
           }}
         />
         <select
           value={selectedCompanyId}
           onChange={e => setSelectedCompanyId(e.target.value)}
-          style={{ ...selectStyle, width: 200 }}
+          style={{ ...selectStyle, width: isMobile ? '100%' : 200, fontSize: isMobile ? 16 : 13 }}
         >
           <option value="">Toutes les entreprises</option>
           {companies.map(c => <option key={c.id} value={c.id}>{c.denomination}</option>)}
         </select>
         <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,.txt,.jpg,.jpeg,.png,.webp,.heic,.heif" style={{ display: 'none' }} onChange={handleImportContract} />
-        <Button
-          variant="ghost" size="sm"
-          disabled={!selectedCompanyId || isParsingContract}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          {isParsingContract ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon name="fileCheck" size={14} />}
-          {isParsingContract ? 'Analyse…' : 'Importer contrat'}
-        </Button>
-        <Button variant="primary" size="sm" icon="plus" disabled={!selectedCompanyId} onClick={() => setDialogOpen(true)}>
-          Ajouter
-        </Button>
+        <div style={{ display: 'flex', gap: 12, ...(isMobile ? { width: '100%' } : {}) }}>
+          <Button
+            variant="ghost" size="sm"
+            disabled={!selectedCompanyId || isParsingContract}
+            onClick={() => fileInputRef.current?.click()}
+            style={isMobile ? { flex: 1, justifyContent: 'center' } : undefined}
+          >
+            {isParsingContract ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon name="fileCheck" size={14} />}
+            {isParsingContract ? 'Analyse…' : 'Importer contrat'}
+          </Button>
+          <Button
+            variant="primary" size="sm" icon="plus" disabled={!selectedCompanyId} onClick={() => setDialogOpen(true)}
+            style={isMobile ? { flex: 1, justifyContent: 'center' } : undefined}
+          >
+            Ajouter
+          </Button>
+        </div>
       </div>
 
       {/* Content */}
@@ -296,7 +309,7 @@ const Clients = () => {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
             {filtered.map(client => (
-              <ClientCard key={client.id} client={client} onEdit={openEdit} onDelete={id => deleteMutation.mutate(id)} />
+              <ClientCard key={client.id} client={client} onEdit={openEdit} onDelete={id => deleteMutation.mutate(id)} isMobile={isMobile} />
             ))}
           </div>
         )}
