@@ -96,20 +96,20 @@ const Stepper = ({ step }: { step: number }) => {
   );
 };
 
-const NumInput = ({ value, onChange, suffix, min }: {
-  value: number; onChange: (n: number) => void; suffix?: string; min?: number;
+const NumInput = ({ value, onChange, suffix, min, isMobile }: {
+  value: number; onChange: (n: number) => void; suffix?: string; min?: number; isMobile?: boolean;
 }) => (
   <div style={{
     display: 'flex', alignItems: 'center', gap: 3,
     background: 'var(--bg-2)', border: '1px solid var(--border)',
-    borderRadius: 'var(--r-2)', padding: '3px 8px', height: 30,
+    borderRadius: 'var(--r-2)', padding: '3px 8px', height: isMobile ? 38 : 30,
   }}>
     <input
       type="number" value={value} min={min ?? 0}
       onChange={e => onChange(parseFloat(e.target.value) || 0)}
       style={{
         background: 'transparent', border: 0, outline: 0, width: '100%', minWidth: 0,
-        color: 'var(--text-1)', fontSize: 12, fontWeight: 600, fontFamily: 'var(--font-mono)',
+        color: 'var(--text-1)', fontSize: isMobile ? 16 : 12, fontWeight: 600, fontFamily: 'var(--font-mono)',
       }}
     />
     {suffix && <span style={{ fontSize: 10, color: 'var(--text-3)', flexShrink: 0 }}>{suffix}</span>}
@@ -237,7 +237,7 @@ export const CreateInvoiceModal = ({
   const selStyle = {
     height: 38, padding: '0 12px', background: 'var(--bg-3)',
     border: '1px solid var(--border)', borderRadius: 'var(--r-3)',
-    color: 'var(--text-1)', fontSize: 13, outline: 0, cursor: 'pointer', width: '100%',
+    color: 'var(--text-1)', fontSize: isMobile ? 16 : 13, outline: 0, cursor: 'pointer', width: '100%',
   } as React.CSSProperties;
 
   return (
@@ -246,13 +246,18 @@ export const CreateInvoiceModal = ({
         position: 'fixed', inset: 0, zIndex: 100,
         background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: isMobile ? 8 : 24, animation: 'fade-in 200ms ease',
+        padding: isMobile ? 0 : 24, animation: 'fade-in 200ms ease',
       }}
       onClick={onClose}
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{
+        style={isMobile ? {
+          position: 'fixed', inset: 0,
+          width: '100%', height: '100dvh', maxHeight: '100dvh',
+          background: 'var(--bg-2)', borderRadius: 0,
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        } : {
           width: 740, maxWidth: '100%', maxHeight: '92vh',
           background: 'var(--bg-2)', border: '1px solid var(--border-strong)',
           borderRadius: 'var(--r-5)', boxShadow: 'var(--shadow-3), var(--accent-glow)',
@@ -261,7 +266,11 @@ export const CreateInvoiceModal = ({
         }}
       >
         {/* Header */}
-        <div style={{ padding: '18px 24px 0', borderBottom: '1px solid var(--border-subtle)' }}>
+        <div style={{
+          padding: isMobile ? '14px 16px 0' : '18px 24px 0',
+          borderBottom: '1px solid var(--border-subtle)',
+          flexShrink: 0,
+        }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
             <div>
               {factureNum && (
@@ -276,9 +285,10 @@ export const CreateInvoiceModal = ({
             <button
               onClick={onClose}
               style={{
-                width: 32, height: 32, borderRadius: 'var(--r-3)',
+                width: isMobile ? 44 : 32, height: isMobile ? 44 : 32, borderRadius: 'var(--r-3)',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 color: 'var(--text-3)', border: '1px solid var(--border-subtle)', cursor: 'pointer',
+                flexShrink: 0,
               }}
               onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-3)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
@@ -388,7 +398,7 @@ export const CreateInvoiceModal = ({
                     style={{
                       background: 'var(--bg-3)', border: '1px solid var(--border)',
                       borderRadius: 'var(--r-3)', padding: '0 12px', height: 38,
-                      color: 'var(--text-1)', fontSize: 13, outline: 0, cursor: 'pointer', width: '100%',
+                      color: 'var(--text-1)', fontSize: isMobile ? 16 : 13, outline: 0, cursor: 'pointer', width: '100%',
                     }}
                   />
                 </label>
@@ -396,6 +406,95 @@ export const CreateInvoiceModal = ({
 
               {/* Lines table */}
               <div style={{ background: 'var(--bg-3)', border: '1px solid var(--border)', borderRadius: 'var(--r-3)', overflow: 'hidden' }}>
+                {isMobile ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 10 }}>
+                    {lines.map((l, i) => {
+                      const { ht } = computeLine(l);
+                      return (
+                        <div key={i} style={{
+                          background: 'var(--bg-2)', border: '1px solid var(--border)',
+                          borderRadius: 'var(--r-3)', padding: 10,
+                          display: 'flex', flexDirection: 'column', gap: 8,
+                        }}>
+                          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <input
+                              value={l.designation}
+                              onChange={e => updateLine(i, { designation: e.target.value })}
+                              placeholder="Désignation…"
+                              style={{
+                                flex: 1, background: 'var(--bg-3)', border: '1px solid var(--border)',
+                                borderRadius: 'var(--r-2)', padding: '0 10px', height: 44,
+                                color: 'var(--text-1)', fontSize: 16, outline: 0, minWidth: 0,
+                              }}
+                            />
+                            <button
+                              onClick={() => removeLine(i)}
+                              disabled={lines.length === 1}
+                              style={{
+                                width: 44, height: 44, borderRadius: 'var(--r-2)', flexShrink: 0,
+                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                color: lines.length === 1 ? 'var(--text-4)' : 'var(--text-3)',
+                                cursor: lines.length === 1 ? 'not-allowed' : 'pointer',
+                                opacity: lines.length === 1 ? 0.4 : 1,
+                              }}
+                            >
+                              <Icon name="trash2" size={16} />
+                            </button>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+                            <NumInput value={l.quantite} onChange={v => updateLine(i, { quantite: v })} min={0} isMobile />
+                            <NumInput value={l.prix_unitaire_ht} onChange={v => updateLine(i, { prix_unitaire_ht: v })} suffix="€" isMobile />
+                            <NumInput value={l.remise} onChange={v => updateLine(i, { remise: Math.min(100, v) })} suffix="%" isMobile />
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                            <select
+                              value={l.unite}
+                              onChange={e => updateLine(i, { unite: e.target.value })}
+                              style={{
+                                height: 40, padding: '0 8px', background: 'var(--bg-3)',
+                                border: '1px solid var(--border)', borderRadius: 'var(--r-2)',
+                                color: 'var(--text-1)', fontSize: 16, outline: 0, width: '100%',
+                              }}
+                            >
+                              {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                            <select
+                              value={l.taux_tva}
+                              onChange={e => updateLine(i, { taux_tva: parseFloat(e.target.value), motif_exoneration: '' })}
+                              style={{
+                                height: 40, padding: '0 8px', background: 'var(--bg-3)',
+                                border: '1px solid var(--border)', borderRadius: 'var(--r-2)',
+                                color: 'var(--text-1)', fontSize: 16, outline: 0, width: '100%',
+                              }}
+                            >
+                              {TVA_RATES.map(r => <option key={r} value={r}>{r}%</option>)}
+                            </select>
+                          </div>
+
+                          {l.taux_tva === 0 && (
+                            <input
+                              value={l.motif_exoneration}
+                              onChange={e => updateLine(i, { motif_exoneration: e.target.value })}
+                              placeholder="Motif d'exonération (ex: Franchise en base de TVA — Art. 293 B CGI)"
+                              style={{
+                                width: '100%', background: 'var(--bg-3)', border: '1px solid var(--border-accent)',
+                                borderRadius: 'var(--r-2)', padding: '0 10px', height: 40,
+                                color: 'var(--text-2)', fontSize: 16, outline: 0,
+                              }}
+                            />
+                          )}
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-3)' }}>
+                            <span>Total HT</span>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--text-1)' }}>{fmt2(ht)} €</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
                 <div style={{ overflowX: 'auto' }}>
                 {/* Table header */}
                 <div style={{
@@ -505,6 +604,7 @@ export const CreateInvoiceModal = ({
                   );
                 })}
                 </div>
+                )}
 
                 {/* Add line + totals */}
                 <div style={{ padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -564,7 +664,7 @@ export const CreateInvoiceModal = ({
                   style={{
                     background: 'var(--bg-3)', border: '1px solid var(--border)',
                     borderRadius: 'var(--r-3)', padding: '8px 12px',
-                    color: 'var(--text-1)', fontSize: 13, outline: 0,
+                    color: 'var(--text-1)', fontSize: isMobile ? 16 : 13, outline: 0,
                     resize: 'vertical', fontFamily: 'var(--font-sans)',
                   }}
                 />
@@ -679,23 +779,26 @@ export const CreateInvoiceModal = ({
 
         {/* Footer */}
         <div style={{
-          padding: '14px 24px', borderTop: '1px solid var(--border)',
+          padding: isMobile ? '10px 16px' : '14px 24px',
+          borderTop: '1px solid var(--border)',
           display: 'flex', alignItems: 'center', gap: 10,
+          flexShrink: 0,
         }}>
           {!isMobile && (
             <span style={{ fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Kbd>esc</Kbd> annuler
             </span>
           )}
-          <div style={{ flex: 1 }} />
+          {!isMobile && <div style={{ flex: 1 }} />}
           {step > 0 && (
-            <Button variant="ghost" size="md" onClick={() => setStep(s => s - 1)}>Retour</Button>
+            <Button variant="ghost" size="md" onClick={() => setStep(s => s - 1)} style={isMobile ? { flex: 1 } : undefined}>Retour</Button>
           )}
           {step < 2 ? (
             <Button
               variant="primary" size="md" iconRight="arrowRight"
               onClick={() => setStep(s => s + 1)}
               disabled={step === 0 && (!companyId || !clientId)}
+              style={isMobile ? { flex: 1 } : undefined}
             >
               Étape suivante
             </Button>
@@ -704,6 +807,7 @@ export const CreateInvoiceModal = ({
               variant="primary" size="md" icon="send"
               onClick={handleSubmit}
               disabled={isPending || !companyId || !clientId || lines.length === 0 || lines.some(l => !l.designation.trim())}
+              style={isMobile ? { flex: 1 } : undefined}
             >
               {isPending ? 'Enregistrement…' : editingInvoice ? 'Mettre à jour' : 'Créer la facture'}
             </Button>
