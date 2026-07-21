@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { InvoiceCard } from './InvoiceCard';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 type Status = 'draft' | 'sent' | 'late' | 'paid';
 
@@ -39,22 +40,47 @@ interface KanbanBoardProps {
 }
 
 export const KanbanBoard = ({ invoices, onCardClick, onStatusChange, sheetOpen }: KanbanBoardProps) => {
+  const isMobile = useIsMobile();
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<Status | null>(null);
+  const [activeCol, setActiveCol] = useState(0);
+  const scrollerRef = useRef<HTMLDivElement>(null);
 
   const grouped = COL_META.reduce((acc, c) => {
     acc[c.key] = invoices.filter(i => getStatus(i) === c.key);
     return acc;
   }, {} as Record<Status, any[]>);
 
+  const handleScroll = () => {
+    if (!scrollerRef.current) return;
+    const el = scrollerRef.current;
+    const colWidth = el.scrollWidth / COL_META.length;
+    setActiveCol(Math.round(el.scrollLeft / colWidth));
+  };
+
   return (
     <div style={{
       flex: 1, overflow: 'auto',
-      padding: '16px 24px 24px',
-      paddingRight: sheetOpen ? 24 + 440 : 24,
+      padding: isMobile ? '12px 0 24px' : '16px 24px 24px',
+      paddingRight: sheetOpen ? 24 + 440 : (isMobile ? 0 : 24),
       transition: 'padding-right 280ms cubic-bezier(.2,.7,.3,1)',
     }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 14, minHeight: '100%' }}>
+      <div
+        ref={scrollerRef}
+        onScroll={isMobile ? handleScroll : undefined}
+        className={isMobile ? 'kanban-scroller-mobile' : undefined}
+        style={isMobile ? {
+          display: 'flex',
+          overflowX: 'auto',
+          scrollSnapType: 'x mandatory',
+          gap: 12,
+          WebkitOverflowScrolling: 'touch',
+          scrollPadding: 16,
+          padding: '0 16px',
+          minHeight: '100%',
+          scrollbarWidth: 'none',
+        } : { display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0,1fr))', gap: 14, minHeight: '100%' }}
+      >
         {COL_META.map(col => {
           const items = grouped[col.key];
           const isDragOver = overCol === col.key;
@@ -78,6 +104,7 @@ export const KanbanBoard = ({ invoices, onCardClick, onStatusChange, sheetOpen }
                 display: 'flex',
                 flexDirection: 'column',
                 transition: 'background 120ms, border-color 120ms',
+                ...(isMobile ? { flex: '0 0 82vw', maxWidth: 320, scrollSnapAlign: 'start' as const } : {}),
               }}
             >
               <div style={{
@@ -135,6 +162,21 @@ export const KanbanBoard = ({ invoices, onCardClick, onStatusChange, sheetOpen }
           );
         })}
       </div>
+      {isMobile && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 }}>
+          {COL_META.map((col, i) => (
+            <span
+              key={col.key}
+              style={{
+                width: 6, height: 6, borderRadius: 999,
+                background: i === activeCol ? 'var(--text-2)' : 'var(--border-subtle)',
+                transition: 'background 120ms',
+              }}
+            />
+          ))}
+        </div>
+      )}
+      <style>{`.kanban-scroller-mobile::-webkit-scrollbar { display: none; }`}</style>
     </div>
   );
 };
