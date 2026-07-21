@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Button, Pill } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/Icon";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ExpenseGrid, type ExpenseScan } from "@/components/expenses/ExpenseGrid";
 import { ExpenseSkeleton } from "@/components/expenses/ExpenseSkeleton";
 import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
@@ -22,6 +23,7 @@ type TabKey = 'pending' | 'history';
 
 const ExpenseScans = () => {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -179,17 +181,23 @@ const ExpenseScans = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Header */}
-      <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em', flex: 1 }}>Notes de frais</h1>
-        {readyCount > 0 && (
-          <Button variant="primary" size="sm" icon="send" disabled={sending} onClick={handleSend}>
-            {sending ? 'Envoi…' : `Envoyer au comptable (${readyCount})`}
+      <div style={{
+        padding: isMobile ? '12px 16px' : '16px 24px', borderBottom: '1px solid var(--border)',
+        display: 'flex', flexDirection: isMobile ? 'column' : 'row',
+        alignItems: isMobile ? 'stretch' : 'center', gap: 12,
+      }}>
+        <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em', flex: isMobile ? undefined : 1 }}>Notes de frais</h1>
+        <div style={{ display: 'flex', gap: 8, ...(isMobile ? { width: '100%' } : {}) }}>
+          {readyCount > 0 && (
+            <Button variant="primary" size="sm" icon="send" disabled={sending} onClick={handleSend} style={isMobile ? { flex: 1, justifyContent: 'center' } : undefined}>
+              {sending ? 'Envoi…' : `Envoyer au comptable (${readyCount})`}
+            </Button>
+          )}
+          <Button variant="subtle" size="sm" disabled={uploading} onClick={handleCapture} style={isMobile ? { flex: 1, justifyContent: 'center' } : undefined}>
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon name="plus" size={14} />}
+            {uploading ? 'Upload…' : 'Prendre une photo'}
           </Button>
-        )}
-        <Button variant="subtle" size="sm" disabled={uploading} onClick={handleCapture}>
-          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icon name="plus" size={14} />}
-          {uploading ? 'Upload…' : 'Prendre une photo'}
-        </Button>
+        </div>
       </div>
 
       <input ref={fileInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleFileChange} />
