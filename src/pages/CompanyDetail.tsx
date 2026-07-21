@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/Icon";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Company = Tables<"companies">;
@@ -72,6 +73,7 @@ const CompanyDetail = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(emptyCompany);
@@ -175,28 +177,40 @@ const CompanyDetail = () => {
           <Icon name="chevronRight" size={12} color="var(--text-3)" />
           <span style={{ fontSize: 12, color: 'var(--text-2)' }}>{company.denomination || 'Sans nom'}</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button
-            onClick={() => navigate('/entreprises')}
-            style={{ width: 32, height: 32, borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-2)' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-3)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-2)'; }}
-          >
-            <Icon name="arrowRight" size={14} style={{ transform: 'rotate(180deg)' }} />
-          </button>
-          <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em' }}>
-              {company.denomination || 'Sans nom'}
-            </h1>
-            <p style={{ fontSize: 12, color: 'var(--text-3)', margin: '3px 0 0' }}>
-              {[company.forme_juridique, company.capital ? `au capital de ${company.capital}` : ''].filter(Boolean).join(' ') || '—'}
-            </p>
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            <button
+              onClick={() => navigate('/entreprises')}
+              style={{
+                width: 32, height: 32, minWidth: isMobile ? 44 : 32, minHeight: isMobile ? 44 : 32,
+                borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--text-3)', cursor: 'pointer', border: '1px solid var(--border)', background: 'var(--bg-2)', flexShrink: 0,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-3)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-2)'; }}
+            >
+              <Icon name="arrowRight" size={14} style={{ transform: 'rotate(180deg)' }} />
+            </button>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h1 style={{
+                fontSize: 20, fontWeight: 600, color: 'var(--text-1)', margin: 0, letterSpacing: '-0.02em',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {company.denomination || 'Sans nom'}
+              </h1>
+              <p style={{
+                fontSize: 12, color: 'var(--text-3)', margin: '3px 0 0',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              }}>
+                {[company.forme_juridique, company.capital ? `au capital de ${company.capital}` : ''].filter(Boolean).join(' ') || '—'}
+              </p>
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="ghost" size="sm" icon="edit" onClick={openEdit}>Modifier</Button>
+          <div style={{ display: 'flex', gap: 8, ...(isMobile ? { width: '100%' } : {}) }}>
+            <Button variant="ghost" size="sm" icon="edit" onClick={openEdit} style={isMobile ? { flex: 1, justifyContent: 'center' } : undefined}>Modifier</Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="danger" size="sm" icon="trash">Supprimer</Button>
+                <Button variant="danger" size="sm" icon="trash" style={isMobile ? { flex: 1, justifyContent: 'center' } : undefined}>Supprimer</Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -257,7 +271,7 @@ const CompanyDetail = () => {
                 <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)', fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>
                   Paiements en ligne (Stripe)
                 </div>
-                <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
                   {stripeOnboardingDone ? (
                     <>
                       <div>
