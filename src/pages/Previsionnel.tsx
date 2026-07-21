@@ -376,11 +376,11 @@ const Previsionnel = () => {
               </AlertDialogContent>
             </AlertDialog>
           </div>
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-3)' }}>
-                  <th style={thStyle}>Mois</th>
+                  <th style={{ ...thStyle, position: 'sticky', left: 0, background: 'var(--bg-3)', zIndex: 1 }}>Mois</th>
                   <th style={{ ...thStyle, textAlign: 'center' }}>Jours ouvrés</th>
                   <th style={{ ...thStyle, textAlign: 'center' }}>Jours prévus</th>
                   <th style={{ ...thStyle, textAlign: 'right' }}>CA Prévisionnel</th>
@@ -401,7 +401,7 @@ const Previsionnel = () => {
                       onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                     >
-                      <td style={{ padding: '8px 14px' }}>
+                      <td style={{ padding: '8px 14px', position: 'sticky', left: 0, background: 'var(--bg-2)', zIndex: 1 }}>
                         <button
                           onClick={() => setCalendarMonth(idx)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, color: 'var(--accent-bright)', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
@@ -440,7 +440,7 @@ const Previsionnel = () => {
               </tbody>
               <tfoot>
                 <tr style={{ background: 'var(--bg-3)', borderTop: '1px solid var(--border)', fontWeight: 600 }}>
-                  <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--text-1)' }}>Total</td>
+                  <td style={{ padding: '10px 14px', fontSize: 13, color: 'var(--text-1)', position: 'sticky', left: 0, background: 'var(--bg-3)', zIndex: 1 }}>Total</td>
                   <td style={{ padding: '10px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text-2)' }}>
                     {Array.from({ length: 12 }, (_, i) => getWorkingDays(year, i + 1)).reduce((a, b) => a + b, 0)}
                     {totalVacationYear > 0 && <span style={{ fontSize: 11, color: 'var(--warning)', marginLeft: 4 }}>(−{totalVacationYear})</span>}

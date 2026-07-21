@@ -299,14 +299,14 @@ const UserManagement = () => {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
                         <button
                           onClick={() => openEditDialog(ur)}
-                          style={{ width: 36, height: 36, borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', cursor: 'pointer', background: 'none', border: 'none' }}
+                          style={{ width: 44, height: 44, borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-3)', cursor: 'pointer', background: 'none', border: 'none' }}
                         >
                           <Icon name="edit" size={16} />
                         </button>
                         {ur.user_id !== user?.id && (
                           <button
                             onClick={() => { setUserToDelete(ur); setDeleteConfirmOpen(true); }}
-                            style={{ width: 36, height: 36, borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)', cursor: 'pointer', background: 'none', border: 'none' }}
+                            style={{ width: 44, height: 44, borderRadius: 'var(--r-2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)', cursor: 'pointer', background: 'none', border: 'none' }}
                           >
                             <Icon name="trash" size={16} />
                           </button>
