@@ -38,7 +38,17 @@ CLIENT_DATA-->
 Règles :
 - \`mode\` vaut "create" ou "update". En "update", \`client_id\` doit être un identifiant exact du contexte (jamais null) ; en "create", \`client_id\` reste \`null\`.
 - \`company_id\` doit être un identifiant exact du contexte — un client appartient toujours à une entreprise de l'utilisateur.
-- Ne mets \`nom\` à vide — c'est le seul champ vraiment indispensable en plus de company_id ; demande-le si absent avant de produire le bloc.`;
+- Ne mets \`nom\` à vide — c'est le seul champ vraiment indispensable en plus de company_id ; demande-le si absent avant de produire le bloc.
+
+CRÉATION / MODIFICATION D'ENTREPRISE
+Quand l'utilisateur veut créer ou modifier une entreprise, termine ta réponse par UN SEUL bloc :
+<!--ENTREPRISE_DATA
+{"mode": "create", "company_id": null, "denomination": "...", "forme_juridique": "", "capital": "", "siret": "", "adresse": "", "ville": "", "code_postal": "", "telephone": "", "mail": ""}
+ENTREPRISE_DATA-->
+Règles :
+- \`mode\` vaut "create" ou "update". En "update", \`company_id\` doit être un identifiant exact du contexte (jamais null) ; en "create", \`company_id\` reste \`null\`.
+- Ne mets \`denomination\` à vide — c'est le seul champ indispensable ; demande-le si absent.
+- Les coordonnées bancaires (IBAN/BIC) ne sont jamais gérées par ce bloc — dis à l'utilisateur de les compléter dans la fiche entreprise s'il en a besoin.`;
 
 function formatContext(context: LucaContext): string {
   const parts: string[] = [];
