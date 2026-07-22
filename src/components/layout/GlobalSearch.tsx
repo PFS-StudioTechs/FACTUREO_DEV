@@ -24,6 +24,7 @@ const NAV_SHORTCUTS = [
   { label: 'Notes de frais', icon: 'receipt', path: '/notes-de-frais', keywords: ['frais', 'note', 'dépense', 'depense', 'ndf'] },
   { label: 'Prévisionnel', icon: 'trending', path: '/previsionnel', keywords: ['prévisionnel', 'previsionnel', 'prévision', 'prevision', 'forecast'] },
   { label: 'Échéancier', icon: 'calendar', path: '/echeancier', keywords: ['échéancier', 'echeancier', 'échéance', 'echeance', 'obligation', 'fiscal'] },
+  { label: 'Impayés & relances', icon: 'mail', path: '/relances', keywords: ['impayé', 'impaye', 'relance', 'retard', 'paiement'] },
   { label: 'Paramètres', icon: 'settings', path: '/parametrage', keywords: ['paramètre', 'parametre', 'paramétrage', 'parametrage', 'settings'] },
 ];
 

@@ -81,6 +81,7 @@ export async function handle(req: Request, corsHeaders: Record<string, string>, 
   params.append("line_items[0][price_data][product_data][name]", `Facture ${invoice.numero_facture}`);
   params.append("line_items[0][quantity]", "1");
   params.append("metadata[invoice_id]", invoice_id);
+  params.append("metadata[user_id]", invoice.user_id);
   params.append("success_url", `${deps.appBaseUrl}/invoices?payment=success&invoice_id=${invoice_id}`);
   params.append("cancel_url", `${deps.appBaseUrl}/invoices?payment=cancelled&invoice_id=${invoice_id}`);
   if (clientEmail) params.append("customer_email", clientEmail);
