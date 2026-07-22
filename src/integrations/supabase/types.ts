@@ -172,6 +172,59 @@ export type Database = {
         }
         Relationships: []
       }
+      documents: {
+        Row: {
+          id: string
+          user_id: string
+          company_id: string | null
+          type: string
+          titre: string
+          storage_bucket: string
+          storage_path: string
+          related_type: string | null
+          related_id: string | null
+          date_document: string
+          date_conservation_min: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          company_id?: string | null
+          type: string
+          titre: string
+          storage_bucket: string
+          storage_path: string
+          related_type?: string | null
+          related_id?: string | null
+          date_document: string
+          date_conservation_min?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          company_id?: string | null
+          type?: string
+          titre?: string
+          storage_bucket?: string
+          storage_path?: string
+          related_type?: string | null
+          related_id?: string | null
+          date_document?: string
+          date_conservation_min?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       echeances: {
         Row: {
           id: string

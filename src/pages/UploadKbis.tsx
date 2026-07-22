@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Icon } from "@/components/ui/Icon";
+import { buildKbisDocument } from "@/lib/documents/buildDocumentPayload";
 
 const UploadKbis = () => {
   const { user, kbisDeadline, refreshProfile } = useAuth();
@@ -69,6 +70,11 @@ const UploadKbis = () => {
         })
         .eq("user_id", user.id);
       if (updateError) throw updateError;
+
+      await supabase.from("documents").upsert(
+        buildKbisDocument({ userId: user.id, storagePath: path, dateDocument: new Date().toISOString().slice(0, 10) }),
+        { onConflict: "storage_bucket,storage_path" }
+      );
 
       await refreshProfile();
       setStatus("done");

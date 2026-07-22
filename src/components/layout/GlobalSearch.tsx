@@ -25,6 +25,7 @@ const NAV_SHORTCUTS = [
   { label: 'Prévisionnel', icon: 'trending', path: '/previsionnel', keywords: ['prévisionnel', 'previsionnel', 'prévision', 'prevision', 'forecast'] },
   { label: 'Échéancier', icon: 'calendar', path: '/echeancier', keywords: ['échéancier', 'echeancier', 'échéance', 'echeance', 'obligation', 'fiscal'] },
   { label: 'Impayés & relances', icon: 'mail', path: '/relances', keywords: ['impayé', 'impaye', 'relance', 'retard', 'paiement'] },
+  { label: 'Coffre documentaire', icon: 'fileCheck', path: '/coffre', keywords: ['coffre', 'document', 'ged', 'archive', 'conservation'] },
   { label: 'Paramètres', icon: 'settings', path: '/parametrage', keywords: ['paramètre', 'parametre', 'paramétrage', 'parametrage', 'settings'] },
 ];
 
