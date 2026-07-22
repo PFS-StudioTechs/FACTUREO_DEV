@@ -16,6 +16,7 @@ import { KanbanBoard } from "@/components/invoices/KanbanBoard";
 import { ListView } from "@/components/invoices/ListView";
 import { SideSheet } from "@/components/invoices/SideSheet";
 import { CreateInvoiceModal, type InvoiceFormData } from "@/components/invoices/CreateInvoiceModal";
+import { buildFacturxDocument } from "@/lib/documents/buildDocumentPayload";
 
 const getStatus = (inv: any): 'draft' | 'sent' | 'late' | 'paid' => {
   if (!inv.status || inv.status === 'brouillon') return 'draft';
@@ -277,6 +278,24 @@ const Invoices = () => {
       if (!res.ok) { const e = await res.json().catch(() => ({ error: "Erreur inconnue" })); throw new Error(e.error || `HTTP ${res.status}`); }
       const blob = await res.blob();
       const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${inv.numero_facture}.pdf`; a.click(); URL.revokeObjectURL(a.href);
+
+      // Persiste le PDF dans le Storage et indexe-le au Coffre documentaire
+      if (user) {
+        const storagePath = `${user.id}/${inv.id}-facturx.pdf`;
+        const { error: uploadError } = await supabase.storage.from("invoices").upload(storagePath, blob, { contentType: "application/pdf", upsert: true });
+        if (!uploadError) {
+          await supabase.from("invoices").update({ facturx_url: storagePath }).eq("id", inv.id);
+          await supabase.from("documents").upsert(
+            buildFacturxDocument({
+              userId: user.id, companyId: inv.company_id ?? null, invoiceId: inv.id,
+              numeroFacture: inv.numero_facture, storagePath,
+              dateDocument: inv.date_facturation || new Date().toISOString().slice(0, 10),
+            }),
+            { onConflict: "storage_bucket,storage_path" }
+          );
+        }
+      }
+
       toast.success("PDF Factur-X généré !");
     } catch (err: any) { toast.error(`Erreur Factur-X : ${err.message}`);
     } finally { setGeneratingId(null); }

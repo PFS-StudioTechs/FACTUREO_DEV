@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Icon } from "@/components/ui/Icon";
+import { buildKbisDocument } from "@/lib/documents/buildDocumentPayload";
 
 interface SiretData {
   siret: string;
@@ -95,14 +96,15 @@ const CompleteProfile = () => {
     try {
       // Upload KBIS if provided
       let kbisUrl: string | null = null;
+      let kbisPath: string | null = null;
       if (kbisFile && kbisStatus === "valid") {
         const ext = kbisFile.name.split(".").pop() ?? "pdf";
-        const path = `${user.id}/kbis/kbis.${ext}`;
+        kbisPath = `${user.id}/kbis/kbis.${ext}`;
         const { error: uploadError } = await supabase.storage
           .from("artisan-documents")
-          .upload(path, kbisFile, { upsert: true });
+          .upload(kbisPath, kbisFile, { upsert: true });
         if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from("artisan-documents").getPublicUrl(path);
+        const { data: urlData } = supabase.storage.from("artisan-documents").getPublicUrl(kbisPath);
         kbisUrl = urlData.publicUrl;
       }
 
@@ -152,6 +154,13 @@ const CompleteProfile = () => {
         .update(profileUpdate)
         .eq("user_id", user.id);
       if (profileError) throw profileError;
+
+      if (kbisPath) {
+        await supabase.from("documents").upsert(
+          buildKbisDocument({ userId: user.id, storagePath: kbisPath, dateDocument: new Date().toISOString().slice(0, 10) }),
+          { onConflict: "storage_bucket,storage_path" }
+        );
+      }
 
       await refreshProfile();
       toast.success("Profil complété !");

@@ -15,6 +15,7 @@ const MORE_NAV = [
   { id: 'previ',       label: 'Prévisionnel', icon: 'trending',  path: '/previsionnel' },
   { id: 'echeancier',  label: 'Échéancier',   icon: 'calendar',  path: '/echeancier' },
   { id: 'relances',    label: 'Relances',     icon: 'mail',      path: '/relances' },
+  { id: 'coffre',      label: 'Coffre',       icon: 'fileCheck', path: '/coffre' },
 ];
 
 const ADMIN_NAV = [

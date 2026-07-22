@@ -16,6 +16,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ExpenseGrid, type ExpenseScan } from "@/components/expenses/ExpenseGrid";
 import { ExpenseSkeleton } from "@/components/expenses/ExpenseSkeleton";
 import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
+import { buildExpenseScanDocument } from "@/lib/documents/buildDocumentPayload";
 
 type EditForm = { merchant: string; amount: string; category: string; expense_date: string; notes: string };
 
@@ -87,6 +88,15 @@ const ExpenseScans = () => {
         .insert({ user_id: user.id, image_url: imagePath, file_url: imagePath, status: "traitement" })
         .select().single();
       if (insertError) throw insertError;
+
+      await supabase.from("documents").upsert(
+        buildExpenseScanDocument({
+          userId: user.id, scanId: record.id, storagePath: imagePath,
+          dateDocument: new Date().toISOString().slice(0, 10),
+        }),
+        { onConflict: "storage_bucket,storage_path" }
+      );
+
       queryClient.invalidateQueries({ queryKey: ["expense_scans"] });
       toast({ title: "Photo reçue", description: "L'IA analyse votre note de frais..." });
 
