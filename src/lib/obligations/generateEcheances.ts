@@ -32,8 +32,19 @@ const CATEGORIE_BY_TYPE: Record<string, Categorie> = {
   tva_suivi_seuil_franchise: "tva",
   tva_ca3: "tva",
   tva_ca12: "tva",
+  is_acompte: "impot",
+  is_solde: "impot",
+  liasse_fiscale: "impot",
+  cotisations_dirigeant_dsn: "urssaf",
+  cotisations_dirigeant_tns: "urssaf",
   cfe: "impot",
 };
+
+// `echeances` n'a pas de colonne dédiée pour le marqueur "non vérifié" (pas
+// de migration ici — module additif). On le rend visible dans l'UI
+// existante (Echeancier.tsx affiche `titre` tel quel) via un suffixe, plutôt
+// que d'ajouter un champ qui casserait l'insert sur le schéma actuel.
+const UNVERIFIED_SUFFIX = " (à confirmer)";
 
 function nextPeriodStart(from: Date, periodicite: Periodicite): Date {
   const year = from.getFullYear();
@@ -63,7 +74,7 @@ export function computeAutoEcheances(
   const obligations = getObligationsProfile(company);
   return obligations.map(o => ({
     company_id: company.company_id,
-    titre: o.label,
+    titre: o.verifie ? o.label : `${o.label}${UNVERIFIED_SUFFIX}`,
     categorie: CATEGORIE_BY_TYPE[o.type] ?? "autre",
     date_echeance: toIsoDate(nextPeriodStart(today, o.periodicite)),
     statut: "a_faire",

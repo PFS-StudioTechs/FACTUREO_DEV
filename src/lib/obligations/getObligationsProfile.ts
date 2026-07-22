@@ -10,6 +10,8 @@ export interface Obligation {
   type: string;
   label: string;
   periodicite: Periodicite;
+  /** false = date/périodicité non vérifiée contre un calendrier fiscal officiel (cf. catalogue.ts). */
+  verifie: boolean;
 }
 
 /** Pure : ne lit que le profil fiscal, filtre le catalogue déclaratif. Aucun accès réseau/BDD. */
@@ -22,5 +24,5 @@ export function getObligationsProfile(company: CompanyFiscalProfile): Obligation
       if (regimeFiscal && !regimeFiscal.includes(company.regime_fiscal)) return false;
       return true;
     })
-    .map(({ type, label, periodicite }) => ({ type, label, periodicite }));
+    .map(({ type, label, periodicite, verifie }) => ({ type, label, periodicite, verifie }));
 }
