@@ -56,11 +56,11 @@ export const LucaPanel = ({ open, onClose }: LucaPanelProps) => {
           display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
         }}>
           <span style={{
-            width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
-            background: 'var(--accent-soft)', color: 'var(--accent-bright)',
+            width: 32, height: 32, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+            background: 'var(--accent-soft)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <Icon name="sparkle" size={15} />
+            <img src="/luca-avatar.png" alt="Luca" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>Luca</div>
