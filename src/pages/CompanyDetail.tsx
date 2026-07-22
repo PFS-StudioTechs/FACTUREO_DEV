@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -21,7 +22,32 @@ const emptyCompany = {
   denomination: "", forme_juridique: "", capital: "", designation: "", nom_contact: "", adresse: "", code_postal: "", ville: "",
   telephone: "", mail: "", mail_envoi: "", siret: "", rcs_rm_ville: "", code_naf: "", tva_intracommunautaire: "",
   banque_titulaire: "", banque_nom: "", banque_adresse: "", bic_swift: "", code_iban: "",
+  forme_juridique_categorie: "micro", regime_tva: "franchise", regime_fiscal: "micro",
 };
+
+const FORME_JURIDIQUE_CATEGORIE_OPTIONS: { value: string; label: string }[] = [
+  { value: "micro", label: "Micro-entreprise" },
+  { value: "ei", label: "Entreprise Individuelle (EI)" },
+  { value: "eurl", label: "EURL" },
+  { value: "sasu", label: "SASU" },
+  { value: "sarl", label: "SARL" },
+  { value: "autre", label: "Autre" },
+];
+
+const REGIME_TVA_OPTIONS: { value: string; label: string }[] = [
+  { value: "franchise", label: "Franchise en base de TVA" },
+  { value: "reel_simplifie", label: "Réel simplifié" },
+  { value: "reel_normal", label: "Réel normal" },
+];
+
+const REGIME_FISCAL_OPTIONS: { value: string; label: string }[] = [
+  { value: "micro", label: "Micro-fiscal" },
+  { value: "ir", label: "Impôt sur le revenu (IR)" },
+  { value: "is", label: "Impôt sur les sociétés (IS)" },
+];
+
+const labelFor = (options: { value: string; label: string }[], value?: string | null) =>
+  options.find(o => o.value === value)?.label || value || "—";
 
 const fields: { key: keyof typeof emptyCompany; label: string; section?: string; type?: string; placeholder?: string; tooltip?: string }[] = [
   { key: "denomination", label: "Dénomination", section: "Informations générales" },
@@ -105,6 +131,10 @@ const CompanyDetail = () => {
     if (!company) return;
     const f: Record<string, string> = {};
     for (const field of fields) f[field.key] = (company as Record<string, unknown>)[field.key] as string || "";
+    const c = company as Record<string, unknown>;
+    f.forme_juridique_categorie = (c.forme_juridique_categorie as string) || "micro";
+    f.regime_tva = (c.regime_tva as string) || "franchise";
+    f.regime_fiscal = (c.regime_fiscal as string) || "micro";
     setForm(f as typeof emptyCompany);
     setDialogOpen(true);
   };
@@ -253,6 +283,14 @@ const CompanyDetail = () => {
             ]}
           />
           <SectionCard
+            title="Profil fiscal"
+            items={[
+              { label: "Forme juridique (catégorie)", value: labelFor(FORME_JURIDIQUE_CATEGORIE_OPTIONS, (company as Record<string, unknown>).forme_juridique_categorie as string) },
+              { label: "Régime de TVA", value: labelFor(REGIME_TVA_OPTIONS, (company as Record<string, unknown>).regime_tva as string) },
+              { label: "Régime fiscal", value: labelFor(REGIME_FISCAL_OPTIONS, (company as Record<string, unknown>).regime_fiscal as string) },
+            ]}
+          />
+          <SectionCard
             title="Coordonnées bancaires"
             items={[
               { label: "Titulaire", value: company.banque_titulaire },
@@ -349,6 +387,36 @@ const CompanyDetail = () => {
                 </div>
               </div>
             ))}
+
+            <h3 className="text-lg font-semibold mb-3 mt-2 border-b pb-2">Profil fiscal</h3>
+            <div className="space-y-1">
+              <Label htmlFor="forme_juridique_categorie">Forme juridique (catégorie)</Label>
+              <Select value={form.forme_juridique_categorie} onValueChange={(v) => handleFieldChange("forme_juridique_categorie", v)}>
+                <SelectTrigger id="forme_juridique_categorie"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {FORME_JURIDIQUE_CATEGORIE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="regime_tva">Régime de TVA</Label>
+              <Select value={form.regime_tva} onValueChange={(v) => handleFieldChange("regime_tva", v)}>
+                <SelectTrigger id="regime_tva"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {REGIME_TVA_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="regime_fiscal">Régime fiscal</Label>
+              <Select value={form.regime_fiscal} onValueChange={(v) => handleFieldChange("regime_fiscal", v)}>
+                <SelectTrigger id="regime_fiscal"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {REGIME_FISCAL_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
             <button
               type="submit"
               disabled={saveMutation.isPending}
