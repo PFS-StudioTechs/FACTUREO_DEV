@@ -3,6 +3,7 @@ export interface LucaContext {
   companies?: { id: string; denomination: string }[];
   clients?: { id: string; nom: string; company_id: string }[];
   recentInvoices?: { id: string; numero_facture: string; client_id: string; montant_ttc: number }[];
+  forecasts?: { id: string; mission_name: string; tjm: number; year: number }[];
 }
 
 const BASE_PROMPT = `Tu es Luca, l'assistant compta/finance intégré à Facturéo, un SaaS de facturation pour indépendants et petites entreprises françaises.
@@ -48,7 +49,17 @@ ENTREPRISE_DATA-->
 Règles :
 - \`mode\` vaut "create" ou "update". En "update", \`company_id\` doit être un identifiant exact du contexte (jamais null) ; en "create", \`company_id\` reste \`null\`.
 - Ne mets \`denomination\` à vide — c'est le seul champ indispensable ; demande-le si absent.
-- Les coordonnées bancaires (IBAN/BIC) ne sont jamais gérées par ce bloc — dis à l'utilisateur de les compléter dans la fiche entreprise s'il en a besoin.`;
+- Les coordonnées bancaires (IBAN/BIC) ne sont jamais gérées par ce bloc — dis à l'utilisateur de les compléter dans la fiche entreprise s'il en a besoin.
+
+CRÉATION / MODIFICATION DE PRÉVISIONNEL (missions + jours planifiés par mois)
+Quand l'utilisateur veut créer une mission prévisionnelle ou ajuster des jours planifiés sur un ou plusieurs mois, termine ta réponse par UN SEUL bloc :
+<!--PREVISIONNEL_DATA
+{"mode": "create", "forecast_id": null, "mission_name": "...", "tjm": 0, "year": 2026, "months": [{"month": 1, "planned_days": 0}]}
+PREVISIONNEL_DATA-->
+Règles :
+- \`mode\` vaut "create" ou "update". En "update", \`forecast_id\` doit être un identifiant exact tiré des missions prévisionnelles du contexte (jamais null) ; en "create", \`forecast_id\` reste \`null\`.
+- \`month\` est un entier de 1 (janvier) à 12 (décembre). N'inclus dans \`months\` que les mois que l'utilisateur veut réellement fixer/modifier — pas besoin des 12.
+- Ne mets \`mission_name\` à vide en création — c'est indispensable ; demande-le si absent. En modification, \`mission_name\`/\`tjm\` peuvent être omis si l'utilisateur ne veut changer que les jours.`;
 
 function formatContext(context: LucaContext): string {
   const parts: string[] = [];
@@ -61,6 +72,9 @@ function formatContext(context: LucaContext): string {
   }
   if (context.recentInvoices?.length) {
     parts.push(`Dernières factures : ${JSON.stringify(context.recentInvoices)}`);
+  }
+  if (context.forecasts?.length) {
+    parts.push(`Missions prévisionnelles de l'utilisateur : ${JSON.stringify(context.forecasts)}`);
   }
   return parts.length > 0 ? `\n\nCONTEXTE ACTUEL\n${parts.join("\n")}` : "";
 }

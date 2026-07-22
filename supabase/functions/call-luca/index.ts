@@ -70,7 +70,7 @@ serve(async (req) => {
 
     const claudeMessages = (history ?? []).map(m => ({ role: m.role, content: m.content }));
 
-    const [{ data: companies }, { data: clients }, { data: recentInvoices }] = await Promise.all([
+    const [{ data: companies }, { data: clients }, { data: recentInvoices }, { data: forecasts }] = await Promise.all([
       supabase.from("companies").select("id, denomination").eq("user_id", user.id),
       supabase.from("clients").select("id, nom, company_id").eq("user_id", user.id),
       supabase.from("invoices")
@@ -78,6 +78,7 @@ serve(async (req) => {
         .eq("user_id", user.id)
         .order("date_facturation", { ascending: false })
         .limit(10),
+      supabase.from("forecasts").select("id, mission_name, tjm, year").eq("user_id", user.id),
     ]);
 
     const context: LucaContext = {
@@ -85,6 +86,7 @@ serve(async (req) => {
       companies: companies ?? [],
       clients: clients ?? [],
       recentInvoices: recentInvoices ?? [],
+      forecasts: forecasts ?? [],
     };
 
     const anthropicResponse = await fetch("https://api.anthropic.com/v1/messages", {
