@@ -199,8 +199,14 @@ export const CreateInvoiceModal = ({
 
   useEffect(() => {
     if (voicePrefill && open) {
+      if (voicePrefill.selectedCompanyId) setCompanyId(voicePrefill.selectedCompanyId);
       if (voicePrefill.selectedClientId) setClientId(voicePrefill.selectedClientId);
       if (voicePrefill.dateFacturation) setDateStr(voicePrefill.dateFacturation.toISOString().split('T')[0]);
+      if (voicePrefill.conditionsPaiement) setConditions(voicePrefill.conditionsPaiement);
+      if (voicePrefill.modePaiement) setMode(voicePrefill.modePaiement);
+      if (voicePrefill.descriptifMission) setDescriptif(voicePrefill.descriptifMission);
+      if (voicePrefill.numeroBonCommande) setNumBC(voicePrefill.numeroBonCommande);
+      if (voicePrefill.type) setInvoiceType(voicePrefill.type);
       if (voicePrefill.lines && voicePrefill.lines.length > 0) {
         setLines(voicePrefill.lines);
         linesSeededByVoiceRef.current = true;

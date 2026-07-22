@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,8 @@ const Invoices = () => {
   const { user, session, isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [view,            setView]            = useState<ViewKey>('kanban');
   const [filter,          setFilter]          = useState<FilterKey>('all');
@@ -51,6 +54,17 @@ const Invoices = () => {
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const importRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  useEffect(() => {
+    const prefill = (location.state as any)?.lucaPrefill;
+    if (!prefill) return;
+    setSelectedCompanyId(prefill.selectedCompanyId || '');
+    setEditingInvoice(null);
+    setVoicePrefill(prefill);
+    setModalOpen(true);
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!user) return;
