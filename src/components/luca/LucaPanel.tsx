@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLucaConversation } from '@/hooks/useLucaConversation';
 import { Icon } from '@/components/ui/Icon';
@@ -15,7 +16,9 @@ export const LucaPanel = ({ open, onClose }: LucaPanelProps) => {
   const location = useLocation();
   const { messages, sendMessage, loading, sending } = useLucaConversation();
   const [input, setInput] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -28,6 +31,21 @@ export const LucaPanel = ({ open, onClose }: LucaPanelProps) => {
     const text = input;
     setInput('');
     sendMessage(text, location.pathname);
+  };
+
+  const handleVoice = () => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { toast.error('Reconnaissance vocale non supportée. Utilisez Chrome.'); return; }
+    const r = new SR(); r.lang = 'fr-FR'; r.continuous = false; r.interimResults = false;
+    recognitionRef.current = r;
+    r.onstart = () => setIsRecording(true);
+    r.onresult = (e: any) => {
+      const transcript = e.results[0][0].transcript;
+      setInput(prev => (prev ? `${prev} ${transcript}` : transcript));
+    };
+    r.onerror = (e: any) => { setIsRecording(false); toast.error(e.error === 'no-speech' ? 'Aucune parole détectée.' : `Erreur micro : ${e.error}`); };
+    r.onend = () => setIsRecording(false);
+    r.start();
   };
 
   return (
@@ -108,6 +126,22 @@ export const LucaPanel = ({ open, onClose }: LucaPanelProps) => {
               color: 'var(--text-1)', fontSize: isMobile ? 16 : 13, outline: 0,
             }}
           />
+          <button
+            onClick={handleVoice}
+            disabled={sending}
+            title="Dicter un message"
+            style={{
+              width: 40, height: 40, borderRadius: 'var(--r-3)', flexShrink: 0,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              background: isRecording ? 'var(--danger-soft)' : 'transparent',
+              color: isRecording ? 'var(--danger)' : 'var(--text-3)',
+              border: `1px solid ${isRecording ? 'var(--danger)' : 'var(--border)'}`,
+              cursor: sending ? 'not-allowed' : 'pointer',
+              opacity: sending ? 0.5 : 1,
+            }}
+          >
+            <Icon name="mic" size={16} />
+          </button>
           <button
             onClick={handleSend}
             disabled={!input.trim() || sending}

@@ -57,6 +57,7 @@ const ICON_PATHS: Record<string, string> = {
   pencil:     'm12 20 9-9-3-3-9 9-1 4 4-1Z',
   copyright:  'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z M14.83 9.17a4 4 0 1 0 0 5.66',
   hash:       'M4 9h16 M4 15h16 M10 3 8 21 M16 3l-2 18',
+  mic:        'M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z M19 10v2a7 7 0 0 1-14 0v-2 M12 19v4 M8 23h8',
 };
 
 interface IconProps {
