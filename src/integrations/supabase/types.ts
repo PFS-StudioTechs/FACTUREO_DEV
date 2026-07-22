@@ -91,11 +91,14 @@ export type Database = {
           denomination: string
           designation: string
           forme_juridique: string
+          forme_juridique_categorie: string
           id: string
           mail: string
           mail_envoi: string
           nom_contact: string
           rcs_rm_ville: string
+          regime_fiscal: string
+          regime_tva: string
           siret: string
           telephone: string
           tva_intracommunautaire: string
@@ -117,11 +120,14 @@ export type Database = {
           denomination?: string
           designation?: string
           forme_juridique?: string
+          forme_juridique_categorie?: string
           id?: string
           mail?: string
           mail_envoi?: string
           nom_contact?: string
           rcs_rm_ville?: string
+          regime_fiscal?: string
+          regime_tva?: string
           siret?: string
           telephone?: string
           tva_intracommunautaire?: string
@@ -143,11 +149,14 @@ export type Database = {
           denomination?: string
           designation?: string
           forme_juridique?: string
+          forme_juridique_categorie?: string
           id?: string
           mail?: string
           mail_envoi?: string
           nom_contact?: string
           rcs_rm_ville?: string
+          regime_fiscal?: string
+          regime_tva?: string
           siret?: string
           telephone?: string
           tva_intracommunautaire?: string
