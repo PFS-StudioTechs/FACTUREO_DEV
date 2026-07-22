@@ -6,11 +6,13 @@ import {
   rankSignals,
   signalsFromEcheances,
   signalsFromInvoices,
+  signalsFromInvoiceDrafts,
   signalsFromExpenseScans,
   signalsFromMissingRecurrence,
   type Signal,
   type EcheanceLite,
   type InvoiceLite,
+  type DraftInvoiceLite,
   type ExpenseScanLite,
   type CompanyForSync,
 } from "@/lib/assistant/signals";
@@ -53,9 +55,9 @@ export function useAssistantSignals() {
     queryKey: ["assistant-invoices", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase.from("invoices")
-        .select("id, numero_facture, statut_paiement, date_limite_paiement, reminder_level, last_reminder_at");
+        .select("id, numero_facture, status, statut_paiement, date_limite_paiement, reminder_level, last_reminder_at");
       if (error) throw error;
-      return (data ?? []) as InvoiceLite[];
+      return (data ?? []) as (InvoiceLite & DraftInvoiceLite)[];
     },
     enabled: !!user,
   });
@@ -80,6 +82,7 @@ export function useAssistantSignals() {
     return rankSignals([
       ...signalsFromEcheances(echeances, today),
       ...signalsFromInvoices(invoices, today),
+      ...signalsFromInvoiceDrafts(invoices),
       ...signalsFromExpenseScans(expenseScans),
       ...signalsFromMissingRecurrence(companies, existingKeys, today),
     ]);
