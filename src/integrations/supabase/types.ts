@@ -166,6 +166,62 @@ export type Database = {
         }
         Relationships: []
       }
+      echeances: {
+        Row: {
+          id: string
+          user_id: string
+          company_id: string
+          titre: string
+          categorie: string
+          date_echeance: string
+          statut: string
+          montant: number | null
+          recurrence: string
+          source: string
+          document_url: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          company_id: string
+          titre: string
+          categorie?: string
+          date_echeance: string
+          statut?: string
+          montant?: number | null
+          recurrence?: string
+          source?: string
+          document_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          company_id?: string
+          titre?: string
+          categorie?: string
+          date_echeance?: string
+          statut?: string
+          montant?: number | null
+          recurrence?: string
+          source?: string
+          document_url?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "echeances_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_scans: {
         Row: {
           created_at: string

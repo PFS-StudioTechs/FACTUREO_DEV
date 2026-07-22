@@ -13,6 +13,7 @@ const MAIN_NAV = [
 const MORE_NAV = [
   { id: 'entreprises', label: 'Entreprises',  icon: 'building', path: '/entreprises' },
   { id: 'previ',       label: 'Prévisionnel', icon: 'trending',  path: '/previsionnel' },
+  { id: 'echeancier',  label: 'Échéancier',   icon: 'calendar',  path: '/echeancier' },
 ];
 
 const ADMIN_NAV = [
