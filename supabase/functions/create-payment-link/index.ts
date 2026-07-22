@@ -24,7 +24,7 @@ serve(async (req) => {
 
     const { data: invoice, error: fetchError } = await supabase
       .from("invoices")
-      .select("id, numero_facture, montant_ttc, client_id, company_id, clients(email, nom)")
+      .select("id, user_id, numero_facture, montant_ttc, client_id, company_id, clients(email, nom)")
       .eq("id", invoice_id)
       .single();
 
@@ -60,6 +60,7 @@ serve(async (req) => {
     params.append("line_items[0][price_data][product_data][name]", `Facture ${invoice.numero_facture}`);
     params.append("line_items[0][quantity]", "1");
     params.append("metadata[invoice_id]", invoice_id);
+    params.append("metadata[user_id]", invoice.user_id);
     params.append("success_url", `${APP_BASE_URL}/invoices?payment=success&invoice_id=${invoice_id}`);
     params.append("cancel_url", `${APP_BASE_URL}/invoices?payment=cancelled&invoice_id=${invoice_id}`);
     if (clientEmail) params.append("customer_email", clientEmail);
