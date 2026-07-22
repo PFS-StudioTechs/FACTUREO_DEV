@@ -72,7 +72,7 @@ serve(async (req) => {
 
     const [{ data: companies }, { data: clients }, { data: recentInvoices }, { data: forecasts }, { data: expenseScans }] = await Promise.all([
       supabase.from("companies").select("id, denomination").eq("user_id", user.id),
-      supabase.from("clients").select("id, nom, company_id").eq("user_id", user.id),
+      supabase.from("clients").select("id, nom, company_id, tjm, conditions_paiement, mode_paiement, descriptif_mission, numero_bon_commande").eq("user_id", user.id),
       supabase.from("invoices")
         .select("id, numero_facture, client_id, montant_ttc, status, statut_paiement, date_limite_paiement, reminder_level")
         .eq("user_id", user.id)
