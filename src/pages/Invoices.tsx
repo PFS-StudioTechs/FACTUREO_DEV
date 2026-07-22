@@ -284,7 +284,19 @@ const Invoices = () => {
         if (error || data?.error) throw new Error(error?.message || data?.error);
         const extracted = data?.data; if (!extracted) throw new Error("Données non extraites");
         const matched = clients.find(c => c.nom.toLowerCase().includes(extracted.client_name?.toLowerCase() || "") || (extracted.client_name || "").toLowerCase().includes(c.nom.toLowerCase()));
-        setVoicePrefill({ selectedClientId: matched?.id, dateFacturation: extracted.date_facturation ? new Date(extracted.date_facturation) : undefined });
+        setVoicePrefill({
+          selectedClientId: matched?.id,
+          dateFacturation: extracted.date_facturation ? new Date(extracted.date_facturation) : undefined,
+          lines: extracted.nombre_jours ? [{
+            designation: matched?.descriptif_mission || '',
+            quantite: extracted.nombre_jours,
+            unite: 'Jour',
+            prix_unitaire_ht: matched?.tjm || 0,
+            remise: 0,
+            taux_tva: 20,
+            motif_exoneration: '',
+          }] : undefined,
+        });
         setModalOpen(true); toast.success("Données extraites ! Vérifiez le formulaire.");
       } catch (err: any) { toast.error(`Erreur analyse : ${err.message}`);
       } finally { setIsProcessingVoice(false); }

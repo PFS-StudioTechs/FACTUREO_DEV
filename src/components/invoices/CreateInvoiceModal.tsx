@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input, Avatar, FacturXBadge, Toggle, Kbd } from '@/components/ui/primitives';
 import { Icon } from '@/components/ui/Icon';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -138,6 +138,11 @@ export const CreateInvoiceModal = ({
   const totalTVA = lines.reduce((s, l) => s + computeLine(l).tva, 0);
   const totalTTC = totalHT + totalTVA;
 
+  const submitBlockers: string[] = [];
+  if (!companyId) submitBlockers.push('entreprise');
+  if (!clientId) submitBlockers.push('client');
+  if (lines.length === 0 || lines.some(l => !l.designation.trim())) submitBlockers.push('désignation de chaque ligne');
+
   const tvaGroups = lines.reduce((acc, l) => {
     const { ht, tva } = computeLine(l);
     if (!acc[l.taux_tva]) acc[l.taux_tva] = { base: 0, tva: 0 };
@@ -147,7 +152,12 @@ export const CreateInvoiceModal = ({
   }, {} as Record<number, { base: number; tva: number }>);
 
   useEffect(() => {
-    if (!open) { setTimeout(() => setStep(0), 300); return; }
+    if (!open) {
+      setTimeout(() => setStep(0), 300);
+      autofilledClientRef.current = null;
+      linesSeededByVoiceRef.current = false;
+      return;
+    }
     if (editingInvoice) {
       setCompanyId(editingInvoice.company_id || '');
       setClientId(editingInvoice.client_id || '');
@@ -184,24 +194,34 @@ export const CreateInvoiceModal = ({
     }
   }, [open, editingInvoice]);
 
+  const autofilledClientRef = useRef<string | null>(null);
+  const linesSeededByVoiceRef = useRef(false);
+
   useEffect(() => {
     if (voicePrefill && open) {
       if (voicePrefill.selectedClientId) setClientId(voicePrefill.selectedClientId);
       if (voicePrefill.dateFacturation) setDateStr(voicePrefill.dateFacturation.toISOString().split('T')[0]);
+      if (voicePrefill.lines && voicePrefill.lines.length > 0) {
+        setLines(voicePrefill.lines);
+        linesSeededByVoiceRef.current = true;
+      }
       setStep(1);
     }
   }, [voicePrefill, open]);
 
   useEffect(() => {
+    if (clientId === autofilledClientRef.current) return;
     const client = clients.find(c => c.id === clientId);
     if (client) {
+      autofilledClientRef.current = clientId;
       setConditions(client.conditions_paiement);
       setMode(client.mode_paiement);
       setDescriptif(client.descriptif_mission);
       setNumBC(client.numero_bon_commande || '');
-      if (lines.length === 1 && lines[0].prix_unitaire_ht === 0 && client.tjm > 0) {
+      if (!linesSeededByVoiceRef.current && lines.length === 1 && lines[0].prix_unitaire_ht === 0 && client.tjm > 0) {
         setLines([{ ...DEFAULT_LINE, prix_unitaire_ht: client.tjm }]);
       }
+      linesSeededByVoiceRef.current = false;
     }
   }, [clientId, clients]);
 
@@ -778,12 +798,20 @@ export const CreateInvoiceModal = ({
         </div>
 
         {/* Footer */}
-        <div style={{
-          padding: isMobile ? '10px 16px' : '14px 24px',
-          borderTop: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', gap: 10,
-          flexShrink: 0,
-        }}>
+        <div style={{ flexShrink: 0 }}>
+          {step === 2 && submitBlockers.length > 0 && (
+            <div style={{
+              padding: '8px 16px', fontSize: 11.5, color: 'var(--warning)',
+              background: 'var(--warning-soft)', borderTop: '1px solid var(--border)',
+            }}>
+              Manque avant de créer : {submitBlockers.join(', ')}.
+            </div>
+          )}
+          <div style={{
+            padding: isMobile ? '10px 16px' : '14px 24px',
+            borderTop: step === 2 && submitBlockers.length > 0 ? 'none' : '1px solid var(--border)',
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
           {!isMobile && (
             <span style={{ fontSize: 11, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Kbd>esc</Kbd> annuler
