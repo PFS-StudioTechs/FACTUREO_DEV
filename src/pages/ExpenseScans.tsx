@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { N8N_EXPENSE_WEBHOOK } from "@/lib/config";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { runExpenseOcr } from "@/lib/expenseOcr";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -20,6 +20,15 @@ import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
 type EditForm = { merchant: string; amount: string; category: string; expense_date: string; notes: string };
 
 type TabKey = 'pending' | 'history';
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 const ExpenseScans = () => {
   const { user } = useAuth();
@@ -78,16 +87,17 @@ const ExpenseScans = () => {
         .insert({ user_id: user.id, image_url: imagePath, file_url: imagePath, status: "traitement" })
         .select().single();
       if (insertError) throw insertError;
-      const { data: signedData } = await supabase.storage.from("expense-scans").createSignedUrl(imagePath, 3600);
-      if (N8N_EXPENSE_WEBHOOK) {
-        fetch(N8N_EXPENSE_WEBHOOK, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ record_id: record.id, user_id: user.id, image_url: signedData?.signedUrl, image_path: imagePath }),
-        }).catch(console.error);
-      }
       queryClient.invalidateQueries({ queryKey: ["expense_scans"] });
       toast({ title: "Photo reçue", description: "L'IA analyse votre note de frais..." });
+
+      // Analyse OCR puis passage en statut "à revoir" — l'utilisateur complète
+      // ensuite les champs manquants (marchand/montant/catégorie) via l'édition.
+      const imageBase64 = await fileToBase64(file);
+      await runExpenseOcr(record.id, imageBase64, file.type, {
+        invoke: (name, opts) => supabase.functions.invoke(name, opts),
+        updateStatus: async (scanId, patch) => { await supabase.from("expense_scans").update(patch).eq("id", scanId); },
+      });
+      queryClient.invalidateQueries({ queryKey: ["expense_scans"] });
     } catch (err: any) {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
     } finally {
