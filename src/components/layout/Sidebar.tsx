@@ -15,6 +15,7 @@ const NAV = [
   { id: 'echeancier',  label: 'Échéancier',      icon: 'calendar',  path: '/echeancier',     count: undefined as number | undefined },
   { id: 'relances',    label: 'Impayés & relances', icon: 'mail',   path: '/relances',       count: undefined as number | undefined },
   { id: 'coffre',      label: 'Coffre',          icon: 'fileCheck', path: '/coffre',        count: undefined as number | undefined },
+  { id: 'assistant',   label: 'Assistant',       icon: 'bell',      path: '/assistant',      count: undefined as number | undefined },
 ];
 
 const ADMIN_NAV = [

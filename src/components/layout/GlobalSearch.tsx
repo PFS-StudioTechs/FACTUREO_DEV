@@ -26,6 +26,7 @@ const NAV_SHORTCUTS = [
   { label: 'Échéancier', icon: 'calendar', path: '/echeancier', keywords: ['échéancier', 'echeancier', 'échéance', 'echeance', 'obligation', 'fiscal'] },
   { label: 'Impayés & relances', icon: 'mail', path: '/relances', keywords: ['impayé', 'impaye', 'relance', 'retard', 'paiement'] },
   { label: 'Coffre documentaire', icon: 'fileCheck', path: '/coffre', keywords: ['coffre', 'document', 'ged', 'archive', 'conservation'] },
+  { label: 'Assistant', icon: 'bell', path: '/assistant', keywords: ['assistant', 'attention', 'signal', 'alerte', 'rappel'] },
   { label: 'Paramètres', icon: 'settings', path: '/parametrage', keywords: ['paramètre', 'parametre', 'paramétrage', 'parametrage', 'settings'] },
 ];
 

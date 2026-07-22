@@ -23,6 +23,7 @@ import ExpenseScans from "@/pages/ExpenseScans";
 import Echeancier from "@/pages/Echeancier";
 import Relances from "@/pages/Relances";
 import Coffre from "@/pages/Coffre";
+import Assistant from "@/pages/Assistant";
 
 const queryClient = new QueryClient();
 
@@ -117,6 +118,7 @@ const App = () => (
               <Route path="/echeancier" element={<Echeancier />} />
               <Route path="/relances" element={<Relances />} />
               <Route path="/coffre" element={<Coffre />} />
+              <Route path="/assistant" element={<Assistant />} />
               <Route path="/parametrage" element={<AdminRoute><InvoiceSettings /></AdminRoute>} />
               <Route path="/utilisateurs" element={<AdminRoute><UserManagement /></AdminRoute>} />
             </Route>
