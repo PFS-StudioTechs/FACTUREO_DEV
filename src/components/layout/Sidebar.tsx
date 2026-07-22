@@ -12,6 +12,7 @@ const NAV = [
   { id: 'entreprises', label: 'Entreprises',     icon: 'building',  path: '/entreprises',    count: undefined as number | undefined },
   { id: 'frais',       label: 'Notes de frais',  icon: 'receipt',   path: '/notes-de-frais', count: undefined as number | undefined },
   { id: 'previ',       label: 'Prévisionnel',    icon: 'trending',  path: '/previsionnel',   count: undefined as number | undefined },
+  { id: 'relances',    label: 'Impayés & relances', icon: 'mail',   path: '/relances',       count: undefined as number | undefined },
 ];
 
 const ADMIN_NAV = [

@@ -15,6 +15,7 @@ const ROUTE_META: { path: string; title: string; breadcrumb?: string[] }[] = [
   { path: '/factures',       title: 'Factures',        breadcrumb: ['Espace', 'Factures'] },
   { path: '/previsionnel',   title: 'Prévisionnel',    breadcrumb: ['Espace', 'Prévisionnel'] },
   { path: '/notes-de-frais', title: 'Notes de frais',  breadcrumb: ['Espace', 'Notes de frais'] },
+  { path: '/relances',       title: 'Impayés & relances', breadcrumb: ['Espace', 'Impayés & relances'] },
   { path: '/',               title: 'Tableau de bord' },
 ];
 

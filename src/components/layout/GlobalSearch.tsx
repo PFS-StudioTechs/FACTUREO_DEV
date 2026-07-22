@@ -23,6 +23,7 @@ const NAV_SHORTCUTS = [
   { label: 'Entreprises', icon: 'building', path: '/entreprises', keywords: ['entreprise', 'société', 'societe', 'company'] },
   { label: 'Notes de frais', icon: 'receipt', path: '/notes-de-frais', keywords: ['frais', 'note', 'dépense', 'depense', 'ndf'] },
   { label: 'Prévisionnel', icon: 'trending', path: '/previsionnel', keywords: ['prévisionnel', 'previsionnel', 'prévision', 'prevision', 'forecast'] },
+  { label: 'Impayés & relances', icon: 'mail', path: '/relances', keywords: ['impayé', 'impaye', 'relance', 'retard', 'paiement'] },
   { label: 'Paramètres', icon: 'settings', path: '/parametrage', keywords: ['paramètre', 'parametre', 'paramétrage', 'parametrage', 'settings'] },
 ];
 

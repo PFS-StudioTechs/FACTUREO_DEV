@@ -22,12 +22,14 @@ export type Database = {
           conditions_paiement: number
           created_at: string
           descriptif_mission: string
+          email: string | null
           id: string
           mode_paiement: string
           nom: string
           numero_bon_commande: string
           siret: string | null
           tjm: number
+          type_client: string
           updated_at: string
           user_id: string
           ville: string
@@ -39,12 +41,14 @@ export type Database = {
           conditions_paiement?: number
           created_at?: string
           descriptif_mission?: string
+          email?: string | null
           id?: string
           mode_paiement?: string
           nom?: string
           numero_bon_commande?: string
           siret?: string | null
           tjm?: number
+          type_client?: string
           updated_at?: string
           user_id: string
           ville?: string
@@ -56,12 +60,14 @@ export type Database = {
           conditions_paiement?: number
           created_at?: string
           descriptif_mission?: string
+          email?: string | null
           id?: string
           mode_paiement?: string
           nom?: string
           numero_bon_commande?: string
           siret?: string | null
           tjm?: number
+          type_client?: string
           updated_at?: string
           user_id?: string
           ville?: string
@@ -364,6 +370,41 @@ export type Database = {
           },
         ]
       }
+      payment_reminders: {
+        Row: {
+          id: string
+          invoice_id: string
+          level: number
+          channel: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          invoice_id: string
+          level: number
+          channel?: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          invoice_id?: string
+          level?: number
+          channel?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_reminders_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           client_id: string
@@ -377,15 +418,22 @@ export type Database = {
           facture_source_id: string | null
           facturx_url: string | null
           id: string
+          last_reminder_at: string | null
           mode_paiement: string
           montant_ht: number
+          montant_paye: number | null
           montant_ttc: number
           montant_tva: number
           nombre_jours: number | null
           numero_bon_commande: string
           numero_facture: string
+          paid_at: string | null
+          reminder_level: number
           sent_at: string | null
           status: string | null
+          statut_paiement: string
+          stripe_payment_link: string | null
+          stripe_session_id: string | null
           taux_tva: number
           tjm: number | null
           type: string
@@ -405,15 +453,22 @@ export type Database = {
           facture_source_id?: string | null
           facturx_url?: string | null
           id?: string
+          last_reminder_at?: string | null
           mode_paiement?: string
           montant_ht?: number
+          montant_paye?: number | null
           montant_ttc?: number
           montant_tva?: number
           nombre_jours?: number | null
           numero_bon_commande?: string
           numero_facture?: string
+          paid_at?: string | null
+          reminder_level?: number
           sent_at?: string | null
           status?: string | null
+          statut_paiement?: string
+          stripe_payment_link?: string | null
+          stripe_session_id?: string | null
           taux_tva?: number
           tjm?: number | null
           type?: string
@@ -433,15 +488,22 @@ export type Database = {
           facture_source_id?: string | null
           facturx_url?: string | null
           id?: string
+          last_reminder_at?: string | null
           mode_paiement?: string
           montant_ht?: number
+          montant_paye?: number | null
           montant_ttc?: number
           montant_tva?: number
           nombre_jours?: number | null
           numero_bon_commande?: string
           numero_facture?: string
+          paid_at?: string | null
+          reminder_level?: number
           sent_at?: string | null
           status?: string | null
+          statut_paiement?: string
+          stripe_payment_link?: string | null
+          stripe_session_id?: string | null
           taux_tva?: number
           tjm?: number | null
           type?: string

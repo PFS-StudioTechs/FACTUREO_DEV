@@ -20,6 +20,7 @@ import NotFound from "@/pages/NotFound";
 import ResetPassword from "@/pages/ResetPassword";
 import CompanyDetail from "@/pages/CompanyDetail";
 import ExpenseScans from "@/pages/ExpenseScans";
+import Relances from "@/pages/Relances";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +112,7 @@ const App = () => (
               <Route path="/factures" element={<Invoices />} />
               <Route path="/previsionnel" element={<Previsionnel />} />
               <Route path="/notes-de-frais" element={<ExpenseScans />} />
+              <Route path="/relances" element={<Relances />} />
               <Route path="/parametrage" element={<AdminRoute><InvoiceSettings /></AdminRoute>} />
               <Route path="/utilisateurs" element={<AdminRoute><UserManagement /></AdminRoute>} />
             </Route>
