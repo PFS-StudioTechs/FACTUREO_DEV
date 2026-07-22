@@ -1,19 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useLucaConversation } from '@/hooks/useLucaConversation';
+import type { useLucaGreeting } from '@/hooks/useLucaGreeting';
 import { Icon } from '@/components/ui/Icon';
 import { LucaMessage } from './LucaMessage';
 
 interface LucaPanelProps {
   open: boolean;
   onClose: () => void;
+  greeting: ReturnType<typeof useLucaGreeting>;
 }
 
-export const LucaPanel = ({ open, onClose }: LucaPanelProps) => {
+export const LucaPanel = ({ open, onClose, greeting }: LucaPanelProps) => {
   const isMobile = useIsMobile();
   const location = useLocation();
+  const navigate = useNavigate();
   const { messages, sendMessage, loading, sending } = useLucaConversation();
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -98,6 +101,43 @@ export const LucaPanel = ({ open, onClose }: LucaPanelProps) => {
 
         {/* Messages */}
         <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {(greeting.greeting || greeting.loading) && (
+            <div style={{
+              background: 'var(--accent-soft)', border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--r-3)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                <span style={{ fontSize: 13, color: 'var(--text-1)', lineHeight: 1.5, flex: 1 }}>
+                  {greeting.loading ? 'Luca prépare ton accueil…' : greeting.greeting}
+                </span>
+                <button
+                  onClick={() => greeting.regenerate()}
+                  disabled={greeting.loading}
+                  title="Rafraîchir l'accueil de Luca"
+                  style={{ color: 'var(--text-3)', cursor: greeting.loading ? 'default' : 'pointer', flexShrink: 0, background: 'none', border: 'none', padding: 2 }}
+                >
+                  <Icon name="refresh" size={14} />
+                </button>
+              </div>
+              {greeting.chips.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {greeting.chips.map(chip => (
+                    <button
+                      key={chip.route + chip.label}
+                      onClick={() => { navigate(chip.route); onClose(); }}
+                      style={{
+                        fontSize: 12, padding: '5px 10px', borderRadius: 999,
+                        background: 'var(--bg-2)', border: '1px solid var(--border)',
+                        color: 'var(--text-1)', cursor: 'pointer',
+                      }}
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {loading ? (
             <div style={{ fontSize: 12, color: 'var(--text-3)', textAlign: 'center', padding: 24 }}>Chargement…</div>
           ) : messages.length === 0 ? (
