@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { GlobalSearch } from './GlobalSearch';
 import { BottomNav } from './BottomNav';
+import { LucaBubble } from '@/components/luca/LucaBubble';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const ROUTE_META: { path: string; title: string; breadcrumb?: string[] }[] = [
@@ -65,6 +66,7 @@ const AppShell = () => {
       </div>
       {isMobile && <BottomNav />}
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <LucaBubble />
     </div>
   );
 };
