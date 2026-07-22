@@ -229,4 +229,5 @@ Env vars hardcodées dans les workflows (plan Community n8n = pas de Variables).
 | 2026-04-30 | Session 2 : fixes sécurité C1/C2/C3/H1 + création 3 workflows n8n via API |
 | 2026-04-30 | Session 3 : découverte infra VPS — n8n en Docker sans compose. Prochain : créer docker-compose.yml n8n avec env vars |
 | 2026-05-04 | Session 4 : nouveau serveur n8n (srv1631367). 3 workflows recréés + activés. SendGrid remplace Resend. 9 Edge Functions déployées. |
+| 2026-07-22 | Branche `chore/cleanup-n8n-ocr` : n8n confirmé mort (0 référence appelante hors code déjà inatteignable) — suppression de `N8N_EXPENSE_WEBHOOK`/`src/lib/config.ts`. Régression trouvée et corrigée : un scan de note de frais restait bloqué en statut "traitement" (plus rien ne le faisait passer à "à revoir" depuis le retrait de n8n). Fix : `src/pages/ExpenseScans.tsx` appelle désormais directement `process-expense-scan` après upload et écrit le résultat (`src/lib/expenseOcr.ts`, testé). Branche poussée, non fusionnée vers `main`. |
 
