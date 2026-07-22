@@ -74,7 +74,7 @@ serve(async (req) => {
       supabase.from("companies").select("id, denomination").eq("user_id", user.id),
       supabase.from("clients").select("id, nom, company_id").eq("user_id", user.id),
       supabase.from("invoices")
-        .select("id, numero_facture, client_id, montant_ttc")
+        .select("id, numero_facture, client_id, montant_ttc, status, statut_paiement, date_limite_paiement, reminder_level")
         .eq("user_id", user.id)
         .order("date_facturation", { ascending: false })
         .limit(10),

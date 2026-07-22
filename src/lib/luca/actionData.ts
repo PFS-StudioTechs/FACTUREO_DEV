@@ -7,6 +7,8 @@ export const ACTION_MARKERS = [
   'ENTREPRISE_DATA',
   'PREVISIONNEL_DATA',
   'NOTE_FRAIS_DATA',
+  'FINALISER_FACTURE_DATA',
+  'RELANCE_DATA',
 ] as const;
 
 export type ActionMarker = typeof ACTION_MARKERS[number];

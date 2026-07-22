@@ -3,11 +3,13 @@ import {
   rankSignals,
   signalsFromEcheances,
   signalsFromInvoices,
+  signalsFromInvoiceDrafts,
   signalsFromExpenseScans,
   signalsFromMissingRecurrence,
   type Signal,
   type EcheanceLite,
   type InvoiceLite,
+  type DraftInvoiceLite,
   type ExpenseScanLite,
   type CompanyForSync,
 } from "@/lib/assistant/signals";
@@ -94,6 +96,31 @@ describe("signalsFromInvoices", () => {
   it("facture impayée loin de l'échéance -> aucun signal", () => {
     const signals = signalsFromInvoices([{ ...base, date_limite_paiement: "2026-09-01" }], TODAY);
     expect(signals).toHaveLength(0);
+  });
+});
+
+describe("signalsFromInvoiceDrafts", () => {
+  const draft: DraftInvoiceLite = { id: "d1", numero_facture: "F-001", status: "brouillon" };
+
+  it("facture en brouillon -> attention", () => {
+    const signals = signalsFromInvoiceDrafts([draft]);
+    expect(signals).toHaveLength(1);
+    expect(signals[0].severite).toBe("attention");
+    expect(signals[0].categorie).toBe("brouillon");
+    expect(signals[0].actionLabel).toBe("Finaliser et envoyer");
+  });
+
+  it("status vide (legacy) traité comme brouillon", () => {
+    const signals = signalsFromInvoiceDrafts([{ ...draft, status: "" }]);
+    expect(signals).toHaveLength(1);
+  });
+
+  it("facture envoyée -> aucun signal", () => {
+    expect(signalsFromInvoiceDrafts([{ ...draft, status: "envoyée" }])).toHaveLength(0);
+  });
+
+  it("facture payée -> aucun signal", () => {
+    expect(signalsFromInvoiceDrafts([{ ...draft, status: "payée" }])).toHaveLength(0);
   });
 });
 

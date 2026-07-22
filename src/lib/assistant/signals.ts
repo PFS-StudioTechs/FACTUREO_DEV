@@ -155,6 +155,27 @@ export function signalsFromInvoices(invoices: InvoiceLite[], today: Date): Signa
   return signals;
 }
 
+export interface DraftInvoiceLite {
+  id: string;
+  numero_facture: string;
+  status: string;
+}
+
+/** Facture restée en brouillon : jamais envoyée, jamais réglée — à finaliser. */
+export function signalsFromInvoiceDrafts(invoices: DraftInvoiceLite[]): Signal[] {
+  return invoices
+    .filter(inv => !inv.status || inv.status === "brouillon")
+    .map(inv => ({
+      id: `facture-brouillon-${inv.id}`,
+      severite: "attention" as const,
+      categorie: "brouillon",
+      titre: `Facture à finaliser : ${inv.numero_facture}`,
+      description: "Cette facture est restée en brouillon, jamais envoyée.",
+      actionLabel: "Finaliser et envoyer",
+      actionRoute: "/factures",
+    }));
+}
+
 // ─── Règle 4 : justificatifs ───
 
 export interface ExpenseScanLite {

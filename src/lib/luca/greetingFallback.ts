@@ -5,6 +5,7 @@ const CATEGORIE_LABELS: Record<string, { one: string; many: (n: number) => strin
   paiement:        { one: "une facture en attente",          many: n => `${n} factures en attente` },
   relance:         { one: "une relance à préparer",          many: n => `${n} relances à préparer` },
   notes_de_frais:  { one: "une note de frais à corriger",    many: n => `${n} notes de frais à corriger` },
+  brouillon:       { one: "une facture en brouillon à finaliser", many: n => `${n} factures en brouillon à finaliser` },
 };
 
 function describeSignal(s: SignalCle): string {

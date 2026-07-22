@@ -6,6 +6,8 @@ import { ClientConfirm, type ClientActionData } from './actions/ClientConfirm';
 import { EntrepriseConfirm, type EntrepriseActionData } from './actions/EntrepriseConfirm';
 import { ForecastConfirm, type ForecastActionData } from './actions/ForecastConfirm';
 import { ExpenseConfirm, type ExpenseActionData } from './actions/ExpenseConfirm';
+import { FinaliserFactureConfirm, type FinaliserFactureActionData } from './actions/FinaliserFactureConfirm';
+import { RelanceConfirm, type RelanceActionData } from './actions/RelanceConfirm';
 
 export const LucaMessage = ({ message }: { message: LucaChatMessage }) => {
   const isUser = message.role === 'user';
@@ -14,12 +16,16 @@ export const LucaMessage = ({ message }: { message: LucaChatMessage }) => {
   const entrepriseData = isUser ? null : parseActionData<EntrepriseActionData>(message.content, 'ENTREPRISE_DATA');
   const forecastData = isUser ? null : parseActionData<ForecastActionData>(message.content, 'PREVISIONNEL_DATA');
   const expenseData = isUser ? null : parseActionData<ExpenseActionData>(message.content, 'NOTE_FRAIS_DATA');
+  const finaliserData = isUser ? null : parseActionData<FinaliserFactureActionData>(message.content, 'FINALISER_FACTURE_DATA');
+  const relanceData = isUser ? null : parseActionData<RelanceActionData>(message.content, 'RELANCE_DATA');
   let displayText = message.content;
   if (factureData) displayText = stripActionData(displayText, 'FACTURE_DATA');
   if (clientData) displayText = stripActionData(displayText, 'CLIENT_DATA');
   if (entrepriseData) displayText = stripActionData(displayText, 'ENTREPRISE_DATA');
   if (forecastData) displayText = stripActionData(displayText, 'PREVISIONNEL_DATA');
   if (expenseData) displayText = stripActionData(displayText, 'NOTE_FRAIS_DATA');
+  if (finaliserData) displayText = stripActionData(displayText, 'FINALISER_FACTURE_DATA');
+  if (relanceData) displayText = stripActionData(displayText, 'RELANCE_DATA');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: isUser ? 'flex-end' : 'flex-start' }}>
@@ -62,6 +68,16 @@ export const LucaMessage = ({ message }: { message: LucaChatMessage }) => {
       {expenseData && (
         <div style={{ width: '100%', maxWidth: '85%' }}>
           <ExpenseConfirm data={expenseData} />
+        </div>
+      )}
+      {finaliserData && (
+        <div style={{ width: '100%', maxWidth: '85%' }}>
+          <FinaliserFactureConfirm data={finaliserData} />
+        </div>
+      )}
+      {relanceData && (
+        <div style={{ width: '100%', maxWidth: '85%' }}>
+          <RelanceConfirm data={relanceData} />
         </div>
       )}
     </div>

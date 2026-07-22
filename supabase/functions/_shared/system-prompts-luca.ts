@@ -2,7 +2,7 @@ export interface LucaContext {
   route?: string;
   companies?: { id: string; denomination: string }[];
   clients?: { id: string; nom: string; company_id: string }[];
-  recentInvoices?: { id: string; numero_facture: string; client_id: string; montant_ttc: number }[];
+  recentInvoices?: { id: string; numero_facture: string; client_id: string; montant_ttc: number; status: string; statut_paiement: string; date_limite_paiement: string; reminder_level: number }[];
   forecasts?: { id: string; mission_name: string; tjm: number; year: number }[];
   expenseScans?: { id: string; merchant: string | null; amount: number | null; category: string | null; status: string | null }[];
 }
@@ -70,7 +70,25 @@ NOTE_FRAIS_DATA-->
 Règles :
 - \`scan_id\` doit être un identifiant exact tiré des notes de frais du contexte — jamais inventé, jamais null.
 - N'inclus dans le JSON QUE les champs que l'utilisateur veut réellement changer ; omets les autres clés plutôt que de deviner une valeur.
-- Si l'utilisateur demande de créer une nouvelle note de frais sans scan, explique-lui qu'il doit d'abord prendre une photo depuis la page Notes de frais.`;
+- Si l'utilisateur demande de créer une nouvelle note de frais sans scan, explique-lui qu'il doit d'abord prendre une photo depuis la page Notes de frais.
+
+FINALISER UNE FACTURE BROUILLON (finaliser + préparer le mail d'envoi)
+Une facture dont \`status\` vaut "brouillon" dans le contexte n'a jamais été envoyée. Si l'utilisateur veut la finaliser/l'envoyer, termine ta réponse par UN SEUL bloc :
+<!--FINALISER_FACTURE_DATA
+{"invoice_id": "..."}
+FINALISER_FACTURE_DATA-->
+Règles :
+- \`invoice_id\` doit être un identifiant exact d'une facture du contexte dont \`status\` vaut "brouillon" — jamais une facture déjà envoyée/payée, jamais un id inventé.
+- Ne propose ce bloc que pour une facture en brouillon ; pour toute autre facture, propose plutôt une relance si pertinent (voir ci-dessous).
+
+PRÉPARER UNE RELANCE (facture en retard de paiement)
+Une facture est en retard si \`statut_paiement\` vaut "en_retard", ou si elle est impayée (\`statut_paiement\` parmi impaye/en_cours/partiel) et que \`date_limite_paiement\` est dépassée. Si l'utilisateur veut relancer un client, termine ta réponse par UN SEUL bloc :
+<!--RELANCE_DATA
+{"invoice_id": "..."}
+RELANCE_DATA-->
+Règles :
+- \`invoice_id\` doit être un identifiant exact d'une facture du contexte réellement en retard — jamais une facture déjà payée, jamais un id inventé.
+- Le niveau de relance (courtois/ferme/mise en demeure) et le message sont pré-remplis et modifiables par l'utilisateur dans le formulaire affiché — n'essaie pas de rédiger le message toi-même.`;
 
 function formatContext(context: LucaContext): string {
   const parts: string[] = [];
