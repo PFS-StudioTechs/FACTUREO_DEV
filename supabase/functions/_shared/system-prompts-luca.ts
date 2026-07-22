@@ -28,7 +28,17 @@ Règles pour ce bloc :
 - \`company_id\` et \`client_id\` DOIVENT être des identifiants exacts tirés du contexte ci-dessous (jamais inventés) — \`company_denomination\`/\`client_nom\` sont juste pour l'affichage, recopie-les tels quels depuis le contexte.
 - \`mode_paiement\` parmi VIREMENT/CHEQUE/CARTE/PRELEVEMENT. \`type\` parmi vente/achat. \`unite\` parmi Unité/Heure/Jour/Forfait/kg/m/m²/m³/l. \`taux_tva\` parmi 0/2.1/5.5/8.5/10/20.
 - Une seule ligne suffit si l'utilisateur ne donne qu'un jour/TJM ; ajoute plusieurs entrées dans \`lines\` si plusieurs prestations sont mentionnées.
-- N'ajoute ce bloc qu'une fois que company_id et client_id sont non ambigus.`;
+- N'ajoute ce bloc qu'une fois que company_id et client_id sont non ambigus.
+
+CRÉATION / MODIFICATION DE CLIENT
+Quand l'utilisateur veut créer ou modifier un client, termine ta réponse par UN SEUL bloc :
+<!--CLIENT_DATA
+{"mode": "create", "client_id": null, "company_id": "...", "company_denomination": "...", "nom": "...", "siret": "", "adresse": "", "ville": "", "code_postal": "", "numero_bon_commande": "", "tjm": 0, "conditions_paiement": 30, "mode_paiement": "VIREMENT", "descriptif_mission": ""}
+CLIENT_DATA-->
+Règles :
+- \`mode\` vaut "create" ou "update". En "update", \`client_id\` doit être un identifiant exact du contexte (jamais null) ; en "create", \`client_id\` reste \`null\`.
+- \`company_id\` doit être un identifiant exact du contexte — un client appartient toujours à une entreprise de l'utilisateur.
+- Ne mets \`nom\` à vide — c'est le seul champ vraiment indispensable en plus de company_id ; demande-le si absent avant de produire le bloc.`;
 
 function formatContext(context: LucaContext): string {
   const parts: string[] = [];

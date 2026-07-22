@@ -2,11 +2,15 @@ import React from 'react';
 import type { LucaChatMessage } from '@/hooks/useLucaConversation';
 import { parseActionData, stripActionData } from '@/lib/luca/actionData';
 import { InvoiceConfirm, type FactureData } from './actions/InvoiceConfirm';
+import { ClientConfirm, type ClientActionData } from './actions/ClientConfirm';
 
 export const LucaMessage = ({ message }: { message: LucaChatMessage }) => {
   const isUser = message.role === 'user';
   const factureData = isUser ? null : parseActionData<FactureData>(message.content, 'FACTURE_DATA');
-  const displayText = factureData ? stripActionData(message.content, 'FACTURE_DATA') : message.content;
+  const clientData = isUser ? null : parseActionData<ClientActionData>(message.content, 'CLIENT_DATA');
+  let displayText = message.content;
+  if (factureData) displayText = stripActionData(displayText, 'FACTURE_DATA');
+  if (clientData) displayText = stripActionData(displayText, 'CLIENT_DATA');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: isUser ? 'flex-end' : 'flex-start' }}>
@@ -29,6 +33,11 @@ export const LucaMessage = ({ message }: { message: LucaChatMessage }) => {
       {factureData && (
         <div style={{ width: '100%', maxWidth: '85%' }}>
           <InvoiceConfirm data={factureData} />
+        </div>
+      )}
+      {clientData && (
+        <div style={{ width: '100%', maxWidth: '85%' }}>
+          <ClientConfirm data={clientData} />
         </div>
       )}
     </div>
