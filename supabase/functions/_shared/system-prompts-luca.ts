@@ -4,6 +4,7 @@ export interface LucaContext {
   clients?: { id: string; nom: string; company_id: string }[];
   recentInvoices?: { id: string; numero_facture: string; client_id: string; montant_ttc: number }[];
   forecasts?: { id: string; mission_name: string; tjm: number; year: number }[];
+  expenseScans?: { id: string; merchant: string | null; amount: number | null; category: string | null; status: string | null }[];
 }
 
 const BASE_PROMPT = `Tu es Luca, l'assistant compta/finance intégré à Facturéo, un SaaS de facturation pour indépendants et petites entreprises françaises.
@@ -59,7 +60,17 @@ PREVISIONNEL_DATA-->
 Règles :
 - \`mode\` vaut "create" ou "update". En "update", \`forecast_id\` doit être un identifiant exact tiré des missions prévisionnelles du contexte (jamais null) ; en "create", \`forecast_id\` reste \`null\`.
 - \`month\` est un entier de 1 (janvier) à 12 (décembre). N'inclus dans \`months\` que les mois que l'utilisateur veut réellement fixer/modifier — pas besoin des 12.
-- Ne mets \`mission_name\` à vide en création — c'est indispensable ; demande-le si absent. En modification, \`mission_name\`/\`tjm\` peuvent être omis si l'utilisateur ne veut changer que les jours.`;
+- Ne mets \`mission_name\` à vide en création — c'est indispensable ; demande-le si absent. En modification, \`mission_name\`/\`tjm\` peuvent être omis si l'utilisateur ne veut changer que les jours.
+
+MODIFICATION DE NOTE DE FRAIS
+Tu ne peux QUE modifier une note de frais déjà scannée (jamais en créer une : il faut toujours une photo/scan initial, que tu ne peux pas produire). Si l'utilisateur veut ajuster le montant, la catégorie, le marchand, la date ou une note sur une dépense déjà scannée, termine ta réponse par UN SEUL bloc :
+<!--NOTE_FRAIS_DATA
+{"scan_id": "...", "merchant": "...", "amount": 0, "category": "...", "expense_date": "YYYY-MM-DD", "notes": "..."}
+NOTE_FRAIS_DATA-->
+Règles :
+- \`scan_id\` doit être un identifiant exact tiré des notes de frais du contexte — jamais inventé, jamais null.
+- N'inclus dans le JSON QUE les champs que l'utilisateur veut réellement changer ; omets les autres clés plutôt que de deviner une valeur.
+- Si l'utilisateur demande de créer une nouvelle note de frais sans scan, explique-lui qu'il doit d'abord prendre une photo depuis la page Notes de frais.`;
 
 function formatContext(context: LucaContext): string {
   const parts: string[] = [];
@@ -75,6 +86,9 @@ function formatContext(context: LucaContext): string {
   }
   if (context.forecasts?.length) {
     parts.push(`Missions prévisionnelles de l'utilisateur : ${JSON.stringify(context.forecasts)}`);
+  }
+  if (context.expenseScans?.length) {
+    parts.push(`Notes de frais récentes de l'utilisateur : ${JSON.stringify(context.expenseScans)}`);
   }
   return parts.length > 0 ? `\n\nCONTEXTE ACTUEL\n${parts.join("\n")}` : "";
 }
