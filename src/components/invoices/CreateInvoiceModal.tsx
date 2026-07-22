@@ -840,6 +840,7 @@ export const CreateInvoiceModal = ({
               {isPending ? 'Enregistrement…' : editingInvoice ? 'Mettre à jour' : 'Créer la facture'}
             </Button>
           )}
+          </div>
         </div>
       </div>
     </div>
