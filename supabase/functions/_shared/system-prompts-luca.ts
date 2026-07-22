@@ -1,7 +1,7 @@
 export interface LucaContext {
   route?: string;
   companies?: { id: string; denomination: string }[];
-  clients?: { id: string; nom: string; company_id: string }[];
+  clients?: { id: string; nom: string; company_id: string; tjm: number; conditions_paiement: number; mode_paiement: string; descriptif_mission: string; numero_bon_commande: string | null }[];
   recentInvoices?: { id: string; numero_facture: string; client_id: string; montant_ttc: number; status: string; statut_paiement: string; date_limite_paiement: string; reminder_level: number }[];
   forecasts?: { id: string; mission_name: string; tjm: number; year: number }[];
   expenseScans?: { id: string; merchant: string | null; amount: number | null; category: string | null; status: string | null }[];
@@ -31,6 +31,12 @@ Règles pour ce bloc :
 - \`mode_paiement\` parmi VIREMENT/CHEQUE/CARTE/PRELEVEMENT. \`type\` parmi vente/achat. \`unite\` parmi Unité/Heure/Jour/Forfait/kg/m/m²/m³/l. \`taux_tva\` parmi 0/2.1/5.5/8.5/10/20.
 - Une seule ligne suffit si l'utilisateur ne donne qu'un jour/TJM ; ajoute plusieurs entrées dans \`lines\` si plusieurs prestations sont mentionnées.
 - N'ajoute ce bloc qu'une fois que company_id et client_id sont non ambigus.
+
+REPRISE AUTOMATIQUE DES INFOS CLIENT (même mécanisme que le formulaire manuel de création de facture)
+Chaque client du contexte porte ses propres valeurs par défaut (\`tjm\`, \`conditions_paiement\`, \`mode_paiement\`, \`descriptif_mission\`, \`numero_bon_commande\`). Dès que \`client_id\` est connu, reprends-les automatiquement dans le bloc \`FACTURE_DATA\` sans les redemander :
+- \`conditions_paiement\` = celui du client. \`mode_paiement\` = celui du client. \`numero_bon_commande\` = celui du client (chaîne vide si absent).
+- \`lines[].prix_unitaire_ht\` = \`tjm\` du client. \`lines[].designation\` = \`descriptif_mission\` du client (sauf si l'utilisateur précise une autre désignation).
+- Les seules informations à demander à l'utilisateur si elles manquent sont : le nombre de jours/unités (\`lines[].quantite\`) et la date de facturation (\`date_facturation\`). Ne redemande jamais le TJM, les conditions de paiement, le mode de paiement ou le descriptif si le client en a déjà en base — écrase-les uniquement si l'utilisateur donne explicitement une valeur différente pour cette facture précise.
 
 CRÉATION / MODIFICATION DE CLIENT
 Quand l'utilisateur veut créer ou modifier un client, termine ta réponse par UN SEUL bloc :
