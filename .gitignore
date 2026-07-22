@@ -27,3 +27,12 @@ supabase/.temp/
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+.env*
+
+# Playwright (storageState = session réelle, jamais committé)
+e2e/.auth/
+e2e/results/
+playwright-report/
+test-results/
