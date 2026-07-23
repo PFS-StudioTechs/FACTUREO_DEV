@@ -1,4 +1,5 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -85,6 +86,8 @@ const Clients = () => {
   const { user } = useAuth();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
@@ -106,6 +109,16 @@ const Clients = () => {
     },
     enabled: !!user,
   });
+
+  // Onboarding Luca : arrivée depuis "Créer mon premier client" — présélectionne
+  // l'entreprise (une seule à ce stade) et ouvre direct le formulaire.
+  useEffect(() => {
+    if (!(location.state as { lucaOnboarding?: boolean } | null)?.lucaOnboarding || companies.length === 0) return;
+    setSelectedCompanyId(companies[0].id);
+    setDialogOpen(true);
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies.length]);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients", user?.id, selectedCompanyId],

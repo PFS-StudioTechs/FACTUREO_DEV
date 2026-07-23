@@ -54,6 +54,7 @@ export function buildLucaContext(signals: Signal[], userName: string): LucaGreet
 export interface ActionChip {
   label: string;
   route: string;
+  state?: Record<string, unknown>;
 }
 
 /** Pure : dérive les puces d'action (lien profond uniquement, aucune exécution) depuis les signaux clés. */

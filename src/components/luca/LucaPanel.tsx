@@ -124,7 +124,7 @@ export const LucaPanel = ({ open, onClose, greeting }: LucaPanelProps) => {
                   {greeting.chips.map(chip => (
                     <button
                       key={chip.route + chip.label}
-                      onClick={() => { navigate(chip.route); onClose(); }}
+                      onClick={() => { navigate(chip.route, chip.state ? { state: chip.state } : undefined); onClose(); }}
                       style={{
                         fontSize: 12, padding: '5px 10px', borderRadius: 999,
                         background: 'var(--bg-2)', border: '1px solid var(--border)',

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,6 +10,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 const InvoiceSettings = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [prefix, setPrefix] = useState("");
   const [code, setCode] = useState("");
@@ -26,6 +29,15 @@ const InvoiceSettings = () => {
     },
     enabled: !!user,
   });
+
+  // Onboarding Luca : arrivée depuis "Paramétrer mes factures" — présélectionne
+  // l'entreprise (une seule à ce stade).
+  useEffect(() => {
+    if (!(location.state as { lucaOnboarding?: boolean } | null)?.lucaOnboarding || companies.length === 0) return;
+    setSelectedCompanyId(companies[0].id);
+    navigate(location.pathname, { replace: true, state: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companies.length]);
 
   const { data: settings } = useQuery({
     queryKey: ["invoice-settings", selectedCompanyId],
