@@ -6,7 +6,7 @@ Audit **lecture seule**. Aucun fichier de composant ou de style n'a été modifi
 
 ## Résumé exécutif
 
-L'app est **utilisable sur mobile aujourd'hui, mais inégale** : les pages construites récemment (Échéancier, Coffre, Assistant, Relances, notes de frais) suivent un pattern mobile-conscient rigoureux (`useIsMobile()` + branchement complet), tandis que les pages plus anciennes/complexes (facturation : Kanban/Liste/SideSheet/CreateInvoiceModal) ont des angles morts réels — le pire étant l'étape 2 de `CreateInvoiceModal` (récap facture) qui écrase deux colonnes sur un modal plein écran mobile. Les cibles tactiles < 40px sont un défaut transverse récurrent (bouton `size="sm"` du design system = 28px, jamais bonifié pour le tactile). Aucun scroll horizontal de page n'a été mesuré sur les 2 routes publiques testables (voir étape 2) ; les routes protégées n'ont pas pu être mesurées (voir limites ci-dessous).
+L'app est **utilisable sur mobile aujourd'hui, mais inégale** : les pages construites récemment (Échéancier, Coffre, Assistant, Relances, notes de frais) suivent un pattern mobile-conscient rigoureux (`useIsMobile()` + branchement complet), tandis que les pages plus anciennes/complexes (facturation : Kanban/Liste/SideSheet/CreateInvoiceModal) ont des angles morts réels — le pire étant l'étape 2 de `CreateInvoiceModal` (récap facture) qui écrase deux colonnes sur un modal plein écran mobile. Les cibles tactiles < 40px sont un défaut transverse récurrent (bouton `size="sm"` du design system = 28px, jamais bonifié pour le tactile). **Mise à jour post-audit :** la mesure Playwright a été complétée après coup sur 10 des 13 routes protégées (compte de test dédié débloqué) — aucun débordement horizontal détecté nulle part, 60/60 (2 routes publiques + 10 protégées) OK toutes largeurs confondues (voir section « Vérification mesurée » et son tableau mis à jour). Cela confirme l'absence de casse totale, mais ne change rien aux angles morts internes ci-dessus (touch targets, grilles de dialog) : le scroll de page et l'ergonomie interne sont deux choses différentes.
 
 **Note globale : 6.5/10** — solide sur les modules récents, fragile sur le cœur historique (facturation), pas de casse totale nulle part.
 
@@ -31,7 +31,7 @@ L'app est **utilisable sur mobile aujourd'hui, mais inégale** : les pages const
 | **Index.tsx (dashboard)** | Moyen | KPIs : grid `repeat(2,1fr)` mobile / `repeat(3,1fr)` desktop (`Index.tsx:483`) — OK. Kanban desktop `repeat(4, minmax(0,1fr))` (`Index.tsx:595`) seulement si `!isMobile`, sinon rangée scroll horizontal (`Index.tsx:567`) — bon pattern. Aucun problème critique trouvé. | mineur |
 | **Companies.tsx** | OK | Titre entreprise en tête de détail non tronqué (`Companies.tsx:266`, pas d'ellipsis contrairement à la ligne de liste `:228`) — overflow visuel possible sur nom très long, pas un débordement de page. | mineur |
 | **CompanyDetail.tsx** | OK | Rien de critique ; titre/sous-titre tronqués correctement (`:226-236`), dialog `max-w-2xl` standard. | — |
-| **Clients.tsx** | Moyen | Grid clients `minmax(280px,1fr)` (`Clients.tsx:310`) : à 320px de large avec le padding de page (`:294`, 24px), la marge disponible (~272-296px) est **tangente** avec un minmax de 280px — à vérifier en mesuré (non fait, route protégée). Dialog édition client : `grid-cols-2` Tailwind fixe (`Clients.tsx:341,346`) sans repli 1 colonne mobile — champs Ville/CP et TJM/Conditions écrasés à 320-375px dans un dialog `max-w-lg`. | moyen |
+| **Clients.tsx** | Moyen | Grid clients `minmax(280px,1fr)` (`Clients.tsx:310`) : à 320px de large avec le padding de page (`:294`, 24px), la marge disponible (~272-296px) est **tangente** avec un minmax de 280px — mesuré (Playwright) : pas de débordement de page à 320px sur `/clients` (50/50 OK, cf. section mesurée), donc le navigateur absorbe cette tangence sans overflow global, mais la marge reste serrée visuellement (non vérifié à l'œil, screenshot dispo `e2e/results/`). Dialog édition client : `grid-cols-2` Tailwind fixe (`Clients.tsx:341,346`) sans repli 1 colonne mobile — champs Ville/CP et TJM/Conditions écrasés à 320-375px dans un dialog `max-w-lg` (dialog non ouvert pendant la mesure automatique, donc toujours non mesuré). | moyen |
 | **Invoices.tsx** (page hôte, priorité de l'audit) | **Le plus fragile** | Le layout est délégué aux sous-composants (`InvoiceFilters`, `KanbanBoard`, `ListView`, `SideSheet`, `CreateInvoiceModal` — voir section transverse ci-dessous, c'est là que sont les vrais problèmes). Le dialog d'envoi d'email intégré à `Invoices.tsx:445-504` est en Tailwind pur (`max-w-md`, `w-full`) — celui-là est propre. | critique (via composants enfants) |
 | **InvoiceSettings.tsx** | OK | Formulaire mono-colonne, `maxWidth:560` (`:124`), champs `width:100%` — dégrade nativement sans besoin de `isMobile`. | — |
 | **ExpenseScans.tsx** | OK | Header `flexDirection: isMobile?column:row` (`:196`), boutons `flex:1` sur mobile (`:202,206`) — branchement complet. Dialog édition = shadcn par défaut (`max-w-lg` implicite), pas de className custom. | — |
@@ -99,13 +99,30 @@ Aucun débordement horizontal mesuré sur ces deux routes, à aucune largeur.
 
 **Non mesurées (routes protégées) :** `/`, `/entreprises`, `/entreprises/:id`, `/clients`, `/factures`, `/parametrage`, `/notes-de-frais`, `/previsionnel`, `/utilisateurs`, `/echeancier`, `/coffre`, `/assistant`, `/relances` — toutes derrière l'auth Supabase, non accessibles sans session valide et sans fixture d'auth fonctionnelle dans cet environnement. L'audit sur ces pages reste donc **statique uniquement** (tableau ci-dessus), pas mesuré à l'écran. Recommandation : installer/porter une fixture d'auth locale (ou un compte de test dédié géré hors de cette session) avant un prochain audit mesuré complet.
 
-### Mise à jour — Lot 0 (branche `test/responsive-measurement`)
+### Mise à jour — Lot 0 (branche `test/responsive-measurement`, fusionnée dans `main`)
 
 Outillage Playwright reconstruit en propre (`playwright.config.ts`, `e2e/global-setup.ts`, `e2e/responsive-smoke.spec.ts`, `e2e/README.md`) puisque `lovable-agent-playwright-config` reste indisponible dans cet environnement. `global-setup.ts` authentifie un compte de **test dédié** (`TEST_USER_EMAIL`/`TEST_USER_PASSWORD`, jamais un compte de prod) et sauvegarde son `storageState` pour les 50 tests (10 routes protégées × 5 largeurs).
 
-Config validée (`npx playwright test --list` → 50 tests listés, `tsc`/`build`/Vitest tous clean). L'exécution réelle reste bloquée : le projet Supabase n'a pas de SMTP configuré, donc `signUp` (client anon) échoue à la création du compte de test ("Error sending confirmation email"). `global-setup.ts` gère maintenant ce cas via l'API admin (`SUPABASE_SERVICE_ROLE_KEY` + `createUser({email_confirm:true})`), qui contourne le SMTP — mais cette clé n'est pas présente dans cet environnement local et ne doit pas être devinée/committée.
+`SUPABASE_SERVICE_ROLE_KEY` fournie ensuite (`.env.local`, jamais committée) : le compte de test a pu être créé via l'API admin (contourne le SMTP non configuré du projet), et `npm run test:e2e` exécuté pour de vrai.
 
-**Tableau page × largeur → OK / déborde : toujours à produire**, dès que `SUPABASE_SERVICE_ROLE_KEY` est fourni (`.env.local`, jamais committé) ou qu'un compte de test déjà confirmé est communiqué. Lancer alors `npm run test:e2e` ; résultats et screenshots dans `e2e/results/`.
+### Résultat mesuré (`npm run test:e2e`, 50 tests, chromium)
+
+| Page | Route | 320px | 375px | 768px | 1024px | 1280px |
+|---|---|---|---|---|---|---|
+| Dashboard | `/` | OK | OK | OK | OK | OK |
+| Entreprises | `/companies` | OK | OK | OK | OK | OK |
+| Clients | `/clients` | OK | OK | OK | OK | OK |
+| Factures | `/invoices` | OK | OK | OK | OK | OK |
+| Notes de frais | `/expense-scans` | OK | OK | OK | OK | OK |
+| Prévisionnel | `/previsionnel` | OK | OK | OK | OK | OK |
+| Utilisateurs | `/user-management` | OK | OK | OK | OK | OK |
+| Échéancier | `/echeancier` | OK | OK | OK | OK | OK |
+| Coffre | `/coffre` | OK | OK | OK | OK | OK |
+| Assistant | `/assistant` | OK | OK | OK | OK | OK |
+
+**50/50 OK.** Aucun débordement horizontal (`scrollWidth <= innerWidth`) détecté sur aucune des 10 routes protégées, à aucune des 5 largeurs testées. Screenshots par page/largeur dans `e2e/results/`.
+
+Ce résultat mesure uniquement le débordement horizontal global de la page — il ne contredit pas les findings statiques de l'audit ci-dessus (touch targets <40px, grilles 2 colonnes dans les dialogs, `CreateInvoiceModal.tsx:704`) : une page peut ne pas déborder tout en ayant des éléments internes mal dimensionnés ou peu accessibles au toucher. Le plan de correction (lots 1 à 4 ci-dessous) reste valable tel quel.
 
 ---
 
@@ -126,7 +143,8 @@ Config validée (`npx playwright test --list` → 50 tests listés, `tsc`/`build
 **Lot 4 — `SideSheet.tsx` : ajouter `useIsMobile()`**
 - Actuellement zéro branchement mobile dans tout le fichier (padding fixe, pas de troncature nom client, bouton fermeture fixe). À traiter en un lot dédié car c'est un composant partagé (facture + éventuels futurs usages), plus risqué à toucher qu'une page isolée.
 
-**Lot 5 — mesure Playwright complète**
-- Une fois une fixture d'auth locale disponible (ou un compte de test dédié fourni explicitement par l'utilisateur), rejouer la mesure `scrollWidth`/`innerWidth` aux 5 largeurs sur les 13 routes protégées listées ci-dessus, pour transformer l'audit statique en audit mesuré complet et confirmer/infirmer les hypothèses de `Clients.tsx:310` (grid `minmax(280px,...)` tangent à 320px) en particulier.
+**Lot 5 — mesure Playwright complète (partiellement fait)**
+- Fait : `scrollWidth`/`innerWidth` mesuré aux 5 largeurs sur 10 routes protégées (`e2e/responsive-smoke.spec.ts`) — 50/50 OK, aucun débordement horizontal détecté (voir tableau mesuré ci-dessus).
+- Restant : 3 routes protégées non couvertes par ce spec (`/entreprises/:id`, `/parametrage`, `/relances`) — à ajouter dans `ROUTES` (`e2e/responsive-smoke.spec.ts`) pour une couverture complète. Cette mesure ne remplace pas les findings statiques ci-dessus (touch targets, grilles internes) — seul le débordement global de page est vérifié automatiquement, donc l'hypothèse `Clients.tsx:310` (grid `minmax(280px,...)` tangent à 320px) reste à vérifier visuellement malgré le "OK" global sur `/clients`.
 
 **Non recommandé en l'état :** toucher `Coffre.tsx`, `Assistant.tsx`, `Relances.tsx`, `Echeancier.tsx` (hors touch targets), `UserManagement.tsx`, `ExpenseScans.tsx`, `Auth.tsx`, `ResetPassword.tsx`, `InvoiceSettings.tsx` — déjà propres ou dégradation naturelle suffisante, tout changement y serait du bikeshedding sans bénéfice mesurable.
