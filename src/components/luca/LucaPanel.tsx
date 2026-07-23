@@ -81,7 +81,7 @@ export const LucaPanel = ({ open, onClose, greeting }: LucaPanelProps) => {
             background: 'var(--ai-soft)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}>
-            <img src="/luca-avatar.png" alt="Luca" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <img src="/Avatar Luca.png" alt="Luca" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-1)' }}>Luca</div>

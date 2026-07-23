@@ -30,7 +30,7 @@ const Assistant = () => {
           background: "var(--ai-soft)",
           display: "inline-flex", alignItems: "center", justifyContent: "center",
         }}>
-          <img src="/luca-avatar.png" alt="Luca" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <img src="/Avatar Luca.png" alt="Luca" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1 style={{ fontSize: 20, fontWeight: 600, color: "var(--text-1)", margin: 0, letterSpacing: "-0.02em" }}>

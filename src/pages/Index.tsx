@@ -520,7 +520,7 @@ const Index = () => {
                 width: 22, height: 22, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
                 background: 'var(--ai-soft)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               }}>
-                <img src="/luca-avatar.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                <img src="/Avatar Luca.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </span>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>Repéré par Luca</div>
             </div>

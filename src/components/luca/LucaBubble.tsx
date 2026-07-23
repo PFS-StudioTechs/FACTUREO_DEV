@@ -45,7 +45,7 @@ export const LucaBubble = () => {
         {open ? (
           <Icon name="x" size={22} />
         ) : (
-          <img src="/luca-avatar.png" alt="Luca" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          <img src="/Avatar Luca.png" alt="Luca" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         )}
       </button>
       <LucaPanel open={open} onClose={() => setOpen(false)} greeting={greetingState} />

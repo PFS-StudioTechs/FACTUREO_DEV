@@ -231,7 +231,7 @@ const Auth = () => {
                   width: 24, height: 24, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
                   background: "var(--ai-soft)", display: "inline-flex", alignItems: "center", justifyContent: "center",
                 }}>
-                  <img src="/luca-avatar.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img src="/Avatar Luca.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </span>
                 <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>Luca</span>
                 <span style={{
