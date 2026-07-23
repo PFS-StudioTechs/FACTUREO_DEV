@@ -191,7 +191,10 @@ const Auth = () => {
           }} />
 
           <div style={{ position: "relative", zIndex: 1, maxWidth: 400 }}>
-            <img src="/logo.svg" alt="Facturéo" style={{ width: 48, height: 48, borderRadius: "var(--r-3)", marginBottom: 24 }} />
+            <img src="/logo.svg" alt="Facturéo" style={{
+              width: 72, height: 72, borderRadius: "var(--r-4)",
+              display: "block", margin: "0 auto 28px",
+            }} />
             <h1 style={{ fontSize: 34, fontWeight: 700, color: "var(--text-1)", margin: 0, letterSpacing: "-0.03em", lineHeight: 1.15 }}>
               Ton copilote administratif, propulsé par l'IA<span style={{ color: "var(--accent)" }}>.</span>
             </h1>
