@@ -20,14 +20,13 @@ serve(async (req) => {
     const { scans }: { scans: ScanItem[] } = await req.json();
     if (!scans || scans.length === 0) throw new Error("No scans provided");
 
-    const SENDGRID_API_KEY = Deno.env.get("SENDGRID_API_KEY");
+    const BREVO_API_KEY = Deno.env.get("BREVO_API_KEY");
     const ACCOUNTANT_EMAIL = Deno.env.get("ACCOUNTANT_EMAIL");
     const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "notes-de-frais@factureo.fr";
 
-    if (!SENDGRID_API_KEY) throw new Error("SENDGRID_API_KEY not configured");
+    if (!BREVO_API_KEY) throw new Error("BREVO_API_KEY not configured");
     if (!ACCOUNTANT_EMAIL) throw new Error("ACCOUNTANT_EMAIL not configured");
 
-    // Build email body
     const scanLines = scans
       .map((s) => {
         const parts = [
@@ -61,23 +60,23 @@ Cordialement`;
       "\n\nLiens des justificatifs :\n" +
       scans.map((s, i) => `${i + 1}. ${s.pdf_url}`).join("\n");
 
-    const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${SENDGRID_API_KEY}`,
+        "api-key": BREVO_API_KEY,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        personalizations: [{ to: [{ email: ACCOUNTANT_EMAIL }] }],
-        from: { email: FROM_EMAIL },
+        sender: { email: FROM_EMAIL },
+        to: [{ email: ACCOUNTANT_EMAIL }],
         subject: `Notes de frais — ${scans.length} justificatif(s)`,
-        content: [{ type: "text/plain", value: emailBody + linksSection }],
+        textContent: emailBody + linksSection,
       }),
     });
 
     if (!res.ok) {
       const err = await res.text();
-      throw new Error(`SendGrid error: ${res.status} — ${err}`);
+      throw new Error(`Brevo error: ${res.status} — ${err}`);
     }
 
     return new Response(

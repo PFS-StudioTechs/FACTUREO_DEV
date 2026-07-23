@@ -33,10 +33,10 @@ export const LucaBubble = () => {
           bottom: isMobile ? 72 : 24,
           zIndex: 997,
           width: 56, height: 56, borderRadius: '50%',
-          background: 'var(--accent)', color: 'var(--accent-on)',
+          background: 'var(--ai)', color: 'var(--ai-on)',
           border: 'none', cursor: 'pointer', padding: 0, overflow: 'hidden',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: 'var(--shadow-accent), var(--shadow-3)',
+          boxShadow: 'var(--ai-glow), var(--shadow-3)',
           transition: 'transform 160ms ease',
         }}
         onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.06)'; }}

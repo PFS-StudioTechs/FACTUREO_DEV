@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/Icon";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -185,10 +187,14 @@ const CompanyDetail = () => {
   };
 
   if (isLoading) return (
-    <div style={{ padding: 24, color: 'var(--text-3)', fontSize: 13 }}>Chargement…</div>
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <Skeleton height={28} width={220} />
+      <Skeleton height={16} width={140} />
+      <div style={{ marginTop: 12 }}><Skeleton height={220} /></div>
+    </div>
   );
   if (!company) return (
-    <div style={{ padding: 24, color: 'var(--text-3)', fontSize: 13 }}>Entreprise introuvable</div>
+    <EmptyState icon="building" title="Entreprise introuvable" description="Elle a peut-être été supprimée ou l'adresse est incorrecte." />
   );
 
   return (

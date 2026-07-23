@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { fr } from "date-fns/locale";
 import { Button, Money } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/Icon";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const MONTH_NAMES = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -85,7 +87,7 @@ const Previsionnel = () => {
   const [newMission, setNewMission] = useState({ name: "", tjm: "" });
   const [showAddForm, setShowAddForm] = useState(false);
 
-  const { data: forecasts = [] } = useQuery({
+  const { data: forecasts = [], isLoading: loadingForecasts } = useQuery({
     queryKey: ["forecasts", user?.id, year],
     queryFn: async () => {
       const { data, error } = await supabase.from("forecasts").select("*").eq("year", year).order("created_at");
@@ -333,20 +335,25 @@ const Previsionnel = () => {
         </div>
       )}
 
-      {/* Empty */}
-      {forecasts.length === 0 && !showAddForm && (
-        <div style={{ background: 'var(--bg-2)', border: '1px dashed var(--border)', borderRadius: 'var(--r-4)', padding: 48, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-          <Icon name="calendar" size={40} color="var(--text-3)" />
-          <div>
-            <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-1)', margin: '0 0 4px' }}>Aucune mission prévisionnelle</h3>
-            <p style={{ fontSize: 13, color: 'var(--text-3)', margin: 0 }}>Créez votre première mission pour commencer</p>
-          </div>
-          <Button variant="primary" size="sm" icon="plus" onClick={() => setShowAddForm(true)}>Nouvelle mission</Button>
+      {/* Loading */}
+      {loadingForecasts && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Skeleton height={180} />
         </div>
       )}
 
+      {/* Empty */}
+      {!loadingForecasts && forecasts.length === 0 && !showAddForm && (
+        <EmptyState
+          icon="calendar"
+          title="Aucune mission prévisionnelle"
+          description="Créez votre première mission pour commencer à anticiper votre CA."
+          action={{ label: "Nouvelle mission", onClick: () => setShowAddForm(true) }}
+        />
+      )}
+
       {/* Forecast tables */}
-      {forecasts.map(forecast => (
+      {!loadingForecasts && forecasts.map(forecast => (
         <div key={forecast.id} style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-4)', overflow: 'hidden' }}>
           <div style={{ padding: '14px 18px', background: 'var(--bg-3)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
@@ -397,9 +404,8 @@ const Previsionnel = () => {
                   return (
                     <tr
                       key={month}
-                      style={{ borderBottom: idx < 11 ? '1px solid var(--border-subtle)' : 'none' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                      className="hover:bg-[var(--bg-hover)]"
+                      style={{ borderBottom: idx < 11 ? '1px solid var(--border-subtle)' : 'none', transition: 'background 120ms ease' }}
                     >
                       <td style={{ padding: '8px 14px', position: 'sticky', left: 0, background: 'var(--bg-2)', zIndex: 1 }}>
                         <button
@@ -468,7 +474,7 @@ const Previsionnel = () => {
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground text-center">1 clic = journée · 2 clics = demi-journée · 3 clics = retirer</p>
               {getVacationCount(calendarMonth + 1) > 0 && (
-                <div className="flex items-center justify-center gap-2 text-sm text-orange-600 font-medium">
+                <div className="flex items-center justify-center gap-2 text-sm font-medium" style={{ color: 'var(--warning)' }}>
                   <Icon name="calendar" size={14} color="var(--warning)" />
                   {getVacationCount(calendarMonth + 1)} jour{getVacationCount(calendarMonth + 1) > 1 ? "s" : ""} de congé ce mois
                 </div>
@@ -490,8 +496,8 @@ const Previsionnel = () => {
                   }}
                   modifiers={{ vacation: fullDayVacationDates, halfDay: halfDayDates }}
                   modifiersClassNames={{
-                    vacation: "bg-orange-100 text-orange-700 hover:bg-orange-200 font-semibold rounded-full",
-                    halfDay: "bg-orange-50 text-orange-500 hover:bg-orange-100 font-medium border border-dashed border-orange-400 rounded-sm",
+                    vacation: "bg-[var(--warning-soft)] text-[var(--warning)] font-semibold rounded-full",
+                    halfDay: "bg-[var(--warning-soft)] text-[var(--warning)] font-medium border border-dashed border-[var(--warning)] rounded-sm opacity-80",
                   }}
                 />
               </div>

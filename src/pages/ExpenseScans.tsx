@@ -16,6 +16,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { ExpenseGrid, type ExpenseScan } from "@/components/expenses/ExpenseGrid";
 import { ExpenseSkeleton } from "@/components/expenses/ExpenseSkeleton";
 import { ExpenseUpload } from "@/components/expenses/ExpenseUpload";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { buildExpenseScanDocument } from "@/lib/documents/buildDocumentPayload";
 
 type EditForm = { merchant: string; amount: string; category: string; expense_date: string; notes: string };
@@ -241,10 +242,7 @@ const ExpenseScans = () => {
         {tab === 'history' && (
           loadingHistory ? <ExpenseSkeleton /> :
           historyScans.length === 0 ? (
-            <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
-              <Icon name="fileCheck" size={36} style={{ marginBottom: 10, display: 'block', margin: '0 auto 10px' }} />
-              Aucune note transmise
-            </div>
+            <EmptyState icon="fileCheck" title="Aucune note transmise" description="Les notes de frais traitées apparaîtront ici." />
           ) : (
             <ExpenseGrid scans={historyScans} selectedIds={new Set()} onToggle={() => {}} onEdit={() => {}} onOpenPdf={openPdf} />
           )

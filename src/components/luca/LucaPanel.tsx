@@ -66,7 +66,7 @@ export const LucaPanel = ({ open, onClose, greeting }: LucaPanelProps) => {
         position: 'fixed', bottom: 88, right: 24, zIndex: 999,
         width: 380, height: 560, maxHeight: 'calc(100vh - 120px)',
         background: 'var(--bg-2)', border: '1px solid var(--border-strong)',
-        borderRadius: 'var(--r-5)', boxShadow: 'var(--shadow-3), var(--accent-glow)',
+        borderRadius: 'var(--r-5)', boxShadow: 'var(--shadow-3), var(--ai-glow)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
         animation: 'slide-in-up 220ms cubic-bezier(.2,.7,.3,1) backwards',
       }}>
@@ -78,7 +78,7 @@ export const LucaPanel = ({ open, onClose, greeting }: LucaPanelProps) => {
         }}>
           <span style={{
             width: 32, height: 32, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
-            background: 'var(--accent-soft)',
+            background: 'var(--ai-soft)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           }}>
             <img src="/luca-avatar.png" alt="Luca" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -103,7 +103,7 @@ export const LucaPanel = ({ open, onClose, greeting }: LucaPanelProps) => {
         <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
           {(greeting.greeting || greeting.loading) && (
             <div style={{
-              background: 'var(--accent-soft)', border: '1px solid var(--border-subtle)',
+              background: 'var(--ai-soft)', border: '1px solid var(--border-subtle)',
               borderRadius: 'var(--r-3)', padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10,
             }}>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
@@ -194,7 +194,7 @@ export const LucaPanel = ({ open, onClose, greeting }: LucaPanelProps) => {
             style={{
               width: 40, height: 40, borderRadius: 'var(--r-3)', flexShrink: 0,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              background: 'var(--accent)', color: 'var(--accent-on)', border: 'none',
+              background: 'var(--ai)', color: 'var(--ai-on)', border: 'none',
               cursor: (!input.trim() || sending) ? 'not-allowed' : 'pointer',
               opacity: (!input.trim() || sending) ? 0.5 : 1,
             }}

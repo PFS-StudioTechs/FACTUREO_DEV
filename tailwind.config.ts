@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 export default {
-  darkMode: ["class"],
+  darkMode: ["selector", '[data-theme="dark"]'],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
@@ -14,65 +14,64 @@ export default {
     },
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
+        border: "var(--border)",
+        input: "var(--border)",
+        ring: "var(--accent)",
+        background: "var(--bg-0)",
+        foreground: "var(--text-1)",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
+          DEFAULT: "var(--accent)",
+          foreground: "var(--accent-on)",
         },
         secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
+          DEFAULT: "var(--bg-3)",
+          foreground: "var(--text-1)",
         },
         destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
+          DEFAULT: "var(--danger)",
+          foreground: "var(--accent-on)",
         },
         muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
+          DEFAULT: "var(--bg-2)",
+          foreground: "var(--text-3)",
         },
         accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
+          DEFAULT: "var(--bg-hover)",
+          foreground: "var(--text-1)",
         },
         popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
+          DEFAULT: "var(--bg-3)",
+          foreground: "var(--text-1)",
         },
         card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
+          DEFAULT: "var(--bg-2)",
+          foreground: "var(--text-1)",
         },
         success: {
-          DEFAULT: "hsl(var(--success))",
-          foreground: "hsl(var(--success-foreground))",
+          DEFAULT: "var(--success)",
+          foreground: "var(--accent-on)",
         },
         warning: {
-          DEFAULT: "hsl(var(--warning))",
-          foreground: "hsl(var(--warning-foreground))",
+          DEFAULT: "var(--warning)",
+          foreground: "var(--accent-on)",
         },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
+        ai: {
+          DEFAULT: "var(--ai)",
+          foreground: "var(--ai-on)",
         },
-        // Design tokens
+        // Design tokens (marque — pas le "accent" sémantique shadcn ci-dessus)
         "bg-0": "var(--bg-0)",
         "bg-1": "var(--bg-1)",
         "bg-2": "var(--bg-2)",
         "bg-3": "var(--bg-3)",
         "bg-4": "var(--bg-4)",
+        brand: "var(--accent)",
+        "brand-bright": "var(--accent-bright)",
+        "brand-deep": "var(--accent-deep)",
         "accent-bright": "var(--accent-bright)",
         "accent-deep": "var(--accent-deep)",
+        "ai-bright": "var(--ai-bright)",
+        "ai-deep": "var(--ai-deep)",
         danger: "var(--danger)",
         info: "var(--info)",
         "status-draft": "var(--status-draft)",

@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { SkeletonRows } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { computeDateConservationMin, type DocumentType } from "@/lib/documents/conservation";
 import { fetchUserDocuments, getSignedDocumentUrl, type DocumentRow } from "@/lib/documents/documentsClient";
 
@@ -152,20 +154,24 @@ const Coffre = () => {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px 24px" }}>
         {isLoading ? (
-          <div style={{ fontSize: 13, color: "var(--text-3)" }}>Chargement…</div>
+          <SkeletonRows count={5} rowHeight={58} />
         ) : filtered.length === 0 ? (
-          <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
-            <Icon name="fileCheck" size={36} style={{ marginBottom: 10, display: "block", margin: "0 auto 10px" }} />
-            Aucun document
-          </div>
+          <EmptyState
+            icon="fileCheck"
+            title="Aucun document"
+            description="Les factures, justificatifs et contrats que tu ajoutes ici restent centralisés et accessibles à tout moment."
+            action={{ label: "Ajouter un document", onClick: () => setDialogOpen(true) }}
+          />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {filtered.map(d => (
               <button
                 key={d.id}
                 onClick={() => openDocument(d)}
+                className="card-interactive"
                 style={{
-                  background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: "var(--r-3)",
+                  background: "var(--bg-2)", border: "1px solid var(--border)", borderRadius: "var(--r-4)",
+                  boxShadow: "var(--shadow-1)",
                   padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
                   cursor: "pointer", textAlign: "left", width: "100%",
                 }}

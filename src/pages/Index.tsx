@@ -5,7 +5,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Card, Button, Pill, Progress, FacturXBadge, Money } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/Icon";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAssistantSignals } from "@/hooks/useAssistantSignals";
+
+const SEVERITE_ICON: Record<string, string> = { critique: "alert", attention: "clock", info: "bell" };
 
 /* ─── Helpers ─── */
 const fmt = (n: number) =>
@@ -312,9 +316,10 @@ const Index = () => {
   const { pseudo, user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { signals, isLoading: loadingSignals } = useAssistantSignals();
 
   /* Existing query — kept unchanged */
-  const { data: stats } = useQuery({
+  const { data: stats, isLoading: loadingStats } = useQuery({
     queryKey: ["dashboard-stats", user?.id],
     queryFn: async () => {
       const [companies, clients, invoices, forecasts, forecastMonths] = await Promise.all([
@@ -436,24 +441,7 @@ const Index = () => {
     { title: 'Payées',     tone: 'paid',  count: kanbanPaid.length,      total: fmt(kanbanPaid.reduce((s, r) => s + r.montant_ttc, 0)),      items: [] },
   ];
 
-  /* Dynamic todos */
-  const todos = [
-    ...(lateItems.length > 0 ? [{
-      ic: 'alert', tone: 'danger',
-      t: lateItems.length === 1 ? 'Relancer 1 client en retard' : `Relancer ${lateItems.length} clients en retard`,
-      s: `${lateItems.length} facture${lateItems.length > 1 ? 's' : ''} dépassée${lateItems.length > 1 ? 's' : ''}`,
-    }] : []),
-    {
-      ic: 'trending', tone: 'info',
-      t: 'Consulter le prévisionnel',
-      s: `${fmt(stats?.totalForecast || 0)} € planifiés`,
-    },
-    {
-      ic: 'invoice', tone: 'warning',
-      t: 'Vérifier les factures actives',
-      s: `${activeItems.length} facture${activeItems.length !== 1 ? 's' : ''} en cours`,
-    },
-  ].slice(0, 3);
+  const topSignals = signals.slice(0, 3);
 
   const monthStr = new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 
@@ -481,6 +469,14 @@ const Index = () => {
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)', gap: isMobile ? 8 : 12 }}>
+        {loadingStats ? (
+          <>
+            <Skeleton height={96} />
+            <Skeleton height={96} />
+            {!isMobile && <Skeleton height={96} />}
+          </>
+        ) : (
+        <>
         <KPI
           label="CA réalisé"
           value={fmt(stats?.totalHT || 0)}
@@ -497,6 +493,8 @@ const Index = () => {
           value={fmt(stats?.totalForecast || 0)}
           hint={isMobile ? undefined : `${stats?.clients || 0} client${(stats?.clients || 0) !== 1 ? 's' : ''} · ${stats?.companies || 0} entreprise${(stats?.companies || 0) !== 1 ? 's' : ''}`}
         />
+        </>
+        )}
       </div>
 
       {/* Chart + todos */}
@@ -514,35 +512,52 @@ const Index = () => {
 
         <Card padding={18}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>À faire</div>
-            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{todos.length}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{
+                width: 22, height: 22, borderRadius: '50%', flexShrink: 0, overflow: 'hidden',
+                background: 'var(--ai-soft)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <img src="/luca-avatar.png" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </span>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-1)' }}>Repéré par Luca</div>
+            </div>
+            <span style={{ fontSize: 11, color: 'var(--text-3)' }}>{topSignals.length}</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {todos.map((task, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'flex-start', gap: 10,
-                padding: '10px 0',
-                borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
-              }}>
-                <span style={{
-                  width: 26, height: 26, borderRadius: 'var(--r-2)',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  background: `var(--${task.tone}-soft)`,
-                  color: `var(--${task.tone})`,
-                  flexShrink: 0,
-                }}>
-                  <Icon name={task.ic} size={13} />
-                </span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-1)' }}>{task.t}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>{task.s}</div>
-                </div>
-                <Icon name="chevronRight" size={13} color="var(--text-3)" />
-              </div>
-            ))}
-            {todos.length === 0 && (
+            {loadingSignals ? (
+              <div style={{ padding: '4px 0' }}><Skeleton height={44} className="mb-2" /><Skeleton height={44} /></div>
+            ) : topSignals.map((s, i) => {
+              const tone = s.severite === 'critique' ? 'danger' : s.severite === 'attention' ? 'warning' : 'info';
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => navigate(s.actionRoute)}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                    padding: '10px 0', width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+                    borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
+                  }}
+                >
+                  <span style={{
+                    width: 26, height: 26, borderRadius: 'var(--r-2)',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    background: `var(--${tone}-soft)`,
+                    color: `var(--${tone})`,
+                    flexShrink: 0,
+                  }}>
+                    <Icon name={SEVERITE_ICON[s.severite] || 'bell'} size={13} />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text-1)' }}>{s.titre}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-3)', marginTop: 1 }}>{s.description}</div>
+                  </div>
+                  <Icon name="chevronRight" size={13} color="var(--text-3)" />
+                </button>
+              );
+            })}
+            {!loadingSignals && topSignals.length === 0 && (
               <div style={{ fontSize: 12, color: 'var(--text-3)', padding: '10px 0' }}>
-                Aucune tâche en attente
+                Rien ne requiert ton attention.
               </div>
             )}
           </div>
