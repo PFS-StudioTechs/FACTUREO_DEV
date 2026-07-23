@@ -95,13 +95,10 @@ const UploadKbis = () => {
       <div style={{ width: "100%", maxWidth: 440 }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{
+          <img src="/logo.svg" alt="Facturéo" style={{
             width: 52, height: 52, borderRadius: "var(--r-4)",
-            background: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center",
             marginBottom: 12, boxShadow: "var(--shadow-accent)",
-          }}>
-            <Icon name="invoice" size={26} color="rgba(0,0,0,0.8)" />
-          </div>
+          }} />
           <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-1)", margin: 0, letterSpacing: "-0.025em" }}>
             Kbis requis
           </h1>
@@ -118,7 +115,7 @@ const UploadKbis = () => {
         }}>
           {/* Warning banner */}
           <div style={{
-            padding: "12px 14px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)",
+            padding: "12px 14px", background: "var(--danger-soft)", border: "1px solid var(--danger)",
             borderRadius: "var(--r-3)", marginBottom: 20,
           }}>
             <p style={{ fontSize: 13, color: "var(--text-1)", margin: 0, lineHeight: 1.5 }}>
@@ -165,7 +162,7 @@ const UploadKbis = () => {
             </button>
 
             {errorMsg && (
-              <p style={{ fontSize: 12, color: "var(--error, #ef4444)", marginTop: 8 }}>{errorMsg}</p>
+              <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 8 }}>{errorMsg}</p>
             )}
           </div>
 
@@ -174,6 +171,7 @@ const UploadKbis = () => {
               type="button"
               onClick={handleUpload}
               disabled={status === "uploading"}
+              className={status === "uploading" ? undefined : "hover:bg-[var(--accent-bright)]"}
               style={{
                 width: "100%", padding: "12px 18px", background: "var(--accent)", color: "var(--accent-on)",
                 border: "none", borderRadius: "var(--r-3)", fontWeight: 500, fontSize: 15,
@@ -181,9 +179,8 @@ const UploadKbis = () => {
                 opacity: status === "uploading" ? 0.7 : 1,
                 display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
                 marginTop: 14, boxShadow: "var(--shadow-accent)",
+                transition: "background 120ms ease",
               }}
-              onMouseEnter={e => { if (status !== "uploading") e.currentTarget.style.background = "var(--accent-bright)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "var(--accent)"; }}
             >
               {status === "uploading" ? "Upload en cours…" : "Valider et accéder à Facturéo"}
               {status !== "uploading" && <Icon name="arrowRight" size={16} />}

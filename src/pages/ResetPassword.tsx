@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { FileText, Eye, EyeOff, Check } from "lucide-react";
+import { Eye, EyeOff, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const ResetPassword = () => {
@@ -63,9 +63,7 @@ const ResetPassword = () => {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-              <FileText className="w-7 h-7 text-primary-foreground" />
-            </div>
+            <img src="/logo.svg" alt="Facturéo" className="w-12 h-12 rounded-xl" />
             <h1 className="text-4xl font-bold tracking-tight">Facturéo</h1>
           </div>
         </div>

@@ -193,13 +193,10 @@ const CompleteProfile = () => {
       <div style={{ width: "100%", maxWidth: 520 }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{
+          <img src="/logo.svg" alt="Facturéo" style={{
             width: 52, height: 52, borderRadius: "var(--r-4)",
-            background: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center",
             marginBottom: 12, boxShadow: "var(--shadow-accent)",
-          }}>
-            <Icon name="invoice" size={26} color="rgba(0,0,0,0.8)" />
-          </div>
+          }} />
           <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-1)", margin: 0, letterSpacing: "-0.025em" }}>
             Compléter votre profil
           </h1>
@@ -312,7 +309,7 @@ const CompleteProfile = () => {
                         "Choisir un fichier (PDF, JPG, PNG)"}
                   </button>
                   {kbisError && (
-                    <p style={{ fontSize: 12, color: "var(--error, #ef4444)", marginTop: 6 }}>{kbisError}</p>
+                    <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 6 }}>{kbisError}</p>
                   )}
                 </div>
               )}

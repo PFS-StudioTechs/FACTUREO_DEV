@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/primitives";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const InvoiceSettings = () => {
   const { user } = useAuth();
@@ -133,6 +134,12 @@ const InvoiceSettings = () => {
             {companies.map(c => <option key={c.id} value={c.id}>{c.denomination}</option>)}
           </select>
         </Field>
+
+        {!selectedCompanyId && (
+          <div style={{ marginTop: 20 }}>
+            <EmptyState icon="building" title="Choisis une entreprise" description="Sélectionne une entreprise ci-dessus pour configurer sa numérotation de facture." />
+          </div>
+        )}
 
         {selectedCompanyId && (
           <div style={{ marginTop: 20, background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-4)', overflow: 'hidden' }}>
