@@ -65,7 +65,7 @@ const Invoices = () => {
     setModalOpen(true);
     navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [location.state]);
 
   useEffect(() => {
     if (!user) return;

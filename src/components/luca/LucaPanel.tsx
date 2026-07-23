@@ -17,7 +17,7 @@ export const LucaPanel = ({ open, onClose, greeting }: LucaPanelProps) => {
   const isMobile = useIsMobile();
   const location = useLocation();
   const navigate = useNavigate();
-  const { messages, sendMessage, loading, sending } = useLucaConversation();
+  const { messages, sendMessage, deleteMessage, loading, sending } = useLucaConversation();
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -145,7 +145,13 @@ export const LucaPanel = ({ open, onClose, greeting }: LucaPanelProps) => {
               Salut, je suis Luca. Pose-moi une question sur ta compta, tes factures, ou demande-moi de t'en créer une.
             </div>
           ) : (
-            messages.map(m => <LucaMessage key={m.id} message={m} />)
+            messages.map(m => (
+              <LucaMessage
+                key={m.id}
+                message={m}
+                onDelete={id => deleteMessage(id).catch(() => toast.error("Impossible de supprimer ce message."))}
+              />
+            ))
           )}
         </div>
 

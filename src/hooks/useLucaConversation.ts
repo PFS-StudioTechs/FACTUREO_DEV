@@ -43,6 +43,18 @@ export function useLucaConversation() {
     return () => { cancelled = true; };
   }, [user]);
 
+  // Le user/assistant message inséré par call-luca reçoit son propre id
+  // côté serveur — on resynchronise depuis la base après envoi pour que
+  // deleteMessage cible le vrai id (pas l'id optimiste local).
+  const resyncMessages = async (convId: string) => {
+    const { data: msgs } = await supabase
+      .from("luca_messages")
+      .select("id, role, content")
+      .eq("conversation_id", convId)
+      .order("created_at", { ascending: true });
+    if (msgs) setMessages(msgs as LucaChatMessage[]);
+  };
+
   const ensureConversation = async (): Promise<string> => {
     if (conversationId) return conversationId;
     const { data, error } = await supabase
@@ -71,10 +83,21 @@ export function useLucaConversation() {
           setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: accumulated } : m));
         },
       });
+      // L'insert du message assistant côté call-luca est fire-and-forget après
+      // la fin du stream — petit délai pour lui laisser le temps d'atterrir
+      // avant de resynchroniser les vrais id (nécessaires pour deleteMessage).
+      await new Promise(r => setTimeout(r, 500));
+      await resyncMessages(convId);
     } finally {
       setSending(false);
     }
   };
 
-  return { messages, sendMessage, loading, sending };
+  const deleteMessage = async (id: string) => {
+    setMessages(prev => prev.filter(m => m.id !== id));
+    const { error } = await supabase.from("luca_messages").delete().eq("id", id);
+    if (error) throw error;
+  };
+
+  return { messages, sendMessage, deleteMessage, loading, sending };
 }
