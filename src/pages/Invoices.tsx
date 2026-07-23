@@ -103,12 +103,27 @@ const Invoices = () => {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from('invoices').update({ status }).eq('id', id);
+      // La facture a 2 statuts distincts : `status` (workflow brouillon/envoyée/payée,
+      // ce kanban) et `statut_paiement` (impaye/paye/..., utilisé par Relances et les
+      // signaux Luca pour détecter les retards). Il faut les garder synchronisés ici,
+      // sinon une facture marquée "Payée" à la main reste "en retard" ailleurs.
+      const patch: { status: string; statut_paiement: string; montant_paye: number | null } = {
+        status, statut_paiement: 'impaye', montant_paye: 0,
+      };
+      if (status === 'payée') {
+        const inv = (invoices as any[]).find(i => i.id === id);
+        patch.statut_paiement = 'paye';
+        patch.montant_paye = inv?.montant_ttc ?? null;
+      }
+      const { error } = await supabase.from('invoices').update(patch).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices-unpaid'] });
+      queryClient.invalidateQueries({ queryKey: ['assistant-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['chart-invoices'] });
       toast.success('Statut mis à jour');
     },
     onError: (err: Error) => toast.error(err.message),

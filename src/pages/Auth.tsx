@@ -174,10 +174,22 @@ const Auth = () => {
           padding: "48px 56px", position: "relative", overflow: "hidden",
           background: "var(--grad-hero)", borderRight: "1px solid var(--border-subtle)",
         }}>
-          <div aria-hidden style={{
+          {/* Orbes animés — profondeur, "vivant" */}
+          <div aria-hidden className="orb-float" style={{
             position: "absolute", left: -140, bottom: -140, width: 360, height: 360, borderRadius: "50%",
             background: "radial-gradient(closest-side, var(--accent-soft-2), transparent)", pointerEvents: "none",
           }} />
+          <div aria-hidden className="orb-float" style={{
+            position: "absolute", right: -80, top: -100, width: 260, height: 260, borderRadius: "50%",
+            background: "radial-gradient(closest-side, var(--ai-soft), transparent)", pointerEvents: "none",
+            animationDelay: "-3s", animationDuration: "12s",
+          }} />
+          <div aria-hidden className="orb-float" style={{
+            position: "absolute", right: 60, bottom: 40, width: 140, height: 140, borderRadius: "50%",
+            background: "radial-gradient(closest-side, var(--accent-soft), transparent)", pointerEvents: "none",
+            animationDelay: "-6s", animationDuration: "8s",
+          }} />
+
           <div style={{ position: "relative", zIndex: 1, maxWidth: 400 }}>
             <img src="/logo.svg" alt="Facturéo" style={{ width: 48, height: 48, borderRadius: "var(--r-3)", marginBottom: 24 }} />
             <h1 style={{ fontSize: 34, fontWeight: 700, color: "var(--text-1)", margin: 0, letterSpacing: "-0.03em", lineHeight: 1.15 }}>
@@ -201,6 +213,43 @@ const Auth = () => {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Aperçu flottant — Luca "en train d'écrire", incarne le copilote IA */}
+            <div className="card-float" style={{
+              marginTop: 40, width: 260,
+              background: "var(--bg-2)", border: "1px solid var(--border-strong)",
+              borderRadius: "var(--r-4)", padding: 14,
+              boxShadow: "var(--shadow-3), var(--ai-glow)",
+              display: "flex", flexDirection: "column", gap: 8,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{
+                  width: 24, height: 24, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
+                  background: "var(--ai-soft)", display: "inline-flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <img src="/luca-avatar.png" alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                </span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-1)" }}>Luca</span>
+                <span style={{
+                  marginLeft: "auto", fontSize: 10, color: "var(--ai-bright)", fontWeight: 500,
+                  display: "inline-flex", alignItems: "center", gap: 4,
+                }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--ai-bright)" }} />
+                  actif
+                </span>
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text-2)", margin: 0, lineHeight: 1.5 }}>
+                3 factures arrivent à échéance cette semaine — je prépare les relances ?
+              </p>
+              <div style={{ display: "flex", gap: 3, padding: "2px 0 0" }}>
+                {[0, 1, 2].map(i => (
+                  <span key={i} className="typing-dot" style={{
+                    width: 5, height: 5, borderRadius: "50%", background: "var(--ai-bright)",
+                    animationDelay: `${i * 0.15}s`,
+                  }} />
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -56,12 +56,15 @@ interface KanbanColProps extends KanbanColData {
 
 /* ─── KPI ─── */
 const KPI = ({
-  label, value, hint, trend, accent,
+  label, value, hint, trend, accent, onClick,
 }: {
   label: string; value: string; hint?: string;
-  trend?: { dir: 'up' | 'down'; value: string }; accent?: boolean;
+  trend?: { dir: 'up' | 'down'; value: string }; accent?: boolean; onClick?: () => void;
 }) => (
-  <Card padding={18} hover style={{ display: 'flex', flexDirection: 'column', gap: 6, minHeight: 96 }}>
+  <Card
+    padding={18} hover onClick={onClick}
+    style={{ display: 'flex', flexDirection: 'column', gap: 6, minHeight: 96, cursor: onClick ? 'pointer' : undefined }}
+  >
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <span style={{ fontSize: 12, color: 'var(--text-2)', fontWeight: 500 }}>{label}</span>
       {trend && (
@@ -259,28 +262,16 @@ const HeroCTA = ({ onCreate }: { onCreate: () => void }) => {
   );
 };
 
-/* ─── SimpleChart ─── */
-const SimpleChart = ({ data, labels }: { data: number[]; labels: string[] }) => {
-  const w = 600, h = 140, pad = 8;
+/* ─── BarChart — histogramme CA mensuel réel, aucune donnée fictive ─── */
+const BarChart = ({ data, labels }: { data: number[]; labels: string[] }) => {
+  const w = 600, h = 140, pad = 8, gap = 10;
   const max = Math.max(...data, 1);
-  const minRaw = Math.min(...data);
-  const min = minRaw * 0.92;
-  const pts: [number, number][] = data.map((v, i) => [
-    pad + (i / (data.length - 1)) * (w - pad * 2),
-    h - pad - ((v - min) / (max - min || 1)) * (h - pad * 2 - 12),
-  ]);
-  const path = pts.map((p, i) => (i === 0 ? `M${p[0]} ${p[1]}` : `L${p[0]} ${p[1]}`)).join(' ');
-  const area = `${path} L${pts[pts.length - 1][0]} ${h - pad} L${pts[0][0]} ${h - pad} Z`;
+  const barW = (w - pad * 2 - gap * (data.length - 1)) / data.length;
+  const isAllZero = data.every(v => v === 0);
 
   return (
     <div>
       <svg viewBox={`0 0 ${w} ${h}`} style={{ width: '100%', height: 140 }}>
-        <defs>
-          <linearGradient id="ch-grad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.32" />
-            <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
-          </linearGradient>
-        </defs>
         {[0, 1, 2, 3].map(i => (
           <line
             key={i}
@@ -290,23 +281,33 @@ const SimpleChart = ({ data, labels }: { data: number[]; labels: string[] }) => 
             stroke="var(--border-subtle)" strokeWidth="1"
           />
         ))}
-        <path d={area} fill="url(#ch-grad)" />
-        <path d={path} stroke="var(--accent)" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        {pts.map((p, i) => (
-          <circle
-            key={i} cx={p[0]} cy={p[1]}
-            r={i === pts.length - 1 ? 4 : 2.5}
-            fill="var(--accent)"
-            stroke={i === pts.length - 1 ? 'var(--bg-2)' : 'transparent'}
-            strokeWidth="2"
-          />
-        ))}
+        {data.map((v, i) => {
+          const barH = Math.max((v / max) * (h - pad * 2 - 4), v > 0 ? 3 : 0);
+          const x = pad + i * (barW + gap);
+          const isLast = i === data.length - 1;
+          return (
+            <rect
+              key={i}
+              x={x} y={h - pad - barH} width={barW} height={barH}
+              rx={3}
+              fill={isLast ? 'var(--accent-bright)' : 'var(--accent)'}
+              opacity={isLast ? 1 : 0.75}
+            >
+              <title>{`${labels[i]} : ${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(v)} €`}</title>
+            </rect>
+          );
+        })}
       </svg>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
         {labels.map(l => (
           <span key={l} style={{ fontSize: 10, color: 'var(--text-3)' }}>{l}</span>
         ))}
       </div>
+      {isAllZero && (
+        <div style={{ fontSize: 11.5, color: 'var(--text-3)', textAlign: 'center', marginTop: 8 }}>
+          Aucune facture sur les 6 derniers mois
+        </div>
+      )}
     </div>
   );
 };
@@ -431,7 +432,6 @@ const Index = () => {
       })
       .reduce((s, r) => s + (r.montant_ht || 0), 0);
   });
-  const chartDisplay = chartValues.some(v => v > 0) ? chartValues : [0, 0, 0, 0, 0, 1];
 
   /* Kanban cols */
   const kanbanCols: KanbanColData[] = [
@@ -482,16 +482,19 @@ const Index = () => {
           value={fmt(stats?.totalHT || 0)}
           hint={`${stats?.invoices || 0} facture${(stats?.invoices || 0) !== 1 ? 's' : ''} au total`}
           accent
+          onClick={() => navigate('/factures')}
         />
         <KPI
           label="TVA collectée"
           value={fmt(stats?.totalTVA || 0)}
           hint="20% du CA HT"
+          onClick={() => navigate('/factures')}
         />
         <KPI
           label={isMobile ? `Prévi. ${new Date().getFullYear()}` : `Prévisionnel ${new Date().getFullYear()}`}
           value={fmt(stats?.totalForecast || 0)}
           hint={isMobile ? undefined : `${stats?.clients || 0} client${(stats?.clients || 0) !== 1 ? 's' : ''} · ${stats?.companies || 0} entreprise${(stats?.companies || 0) !== 1 ? 's' : ''}`}
+          onClick={() => navigate('/previsionnel')}
         />
         </>
         )}
@@ -507,7 +510,7 @@ const Index = () => {
             </div>
             <Pill tone="accent" dot size="sm">HT · €</Pill>
           </div>
-          <SimpleChart data={chartDisplay} labels={monthLabels} />
+          <BarChart data={chartValues} labels={monthLabels} />
         </Card>
 
         <Card padding={18}>
