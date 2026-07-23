@@ -804,7 +804,7 @@ export const CreateInvoiceModal = ({
         </div>
 
         {/* Footer */}
-        <div style={{ flexShrink: 0 }}>
+        <div style={{ flexShrink: 0, paddingBottom: isMobile ? 'env(safe-area-inset-bottom)' : 0 }}>
           {step === 2 && submitBlockers.length > 0 && (
             <div style={{
               padding: '8px 16px', fontSize: 11.5, color: 'var(--warning)',
