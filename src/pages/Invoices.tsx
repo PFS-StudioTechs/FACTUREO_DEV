@@ -16,6 +16,7 @@ import { KanbanBoard } from "@/components/invoices/KanbanBoard";
 import { ListView } from "@/components/invoices/ListView";
 import { SideSheet } from "@/components/invoices/SideSheet";
 import { CreateInvoiceModal, type InvoiceFormData } from "@/components/invoices/CreateInvoiceModal";
+import { SkeletonRows } from "@/components/ui/skeleton";
 import { buildFacturxDocument } from "@/lib/documents/buildDocumentPayload";
 
 const getStatus = (inv: any): 'draft' | 'sent' | 'late' | 'paid' => {
@@ -88,7 +89,7 @@ const Invoices = () => {
     enabled: !!selectedCompanyId,
   });
 
-  const { data: invoices = [] } = useQuery({
+  const { data: invoices = [], isLoading: loadingInvoices } = useQuery({
     queryKey: ["invoices", user?.id, selectedCompanyId],
     queryFn: async () => {
       let q = supabase.from("invoices").select("*, clients(nom), companies(denomination), invoice_lines(*)").order("date_facturation", { ascending: false });
@@ -408,7 +409,11 @@ const Invoices = () => {
         isMobile={isMobile}
       />
 
-      {!isMobile && view === 'kanban' ? (
+      {loadingInvoices ? (
+        <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px 24px' }}>
+          <SkeletonRows count={6} rowHeight={64} />
+        </div>
+      ) : !isMobile && view === 'kanban' ? (
         <KanbanBoard
           invoices={filtered} onCardClick={openSheet} sheetOpen={sheetOpen}
           onStatusChange={(id, status) => updateStatus.mutate({ id, status })}

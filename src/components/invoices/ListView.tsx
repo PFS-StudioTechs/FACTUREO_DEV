@@ -1,6 +1,7 @@
 import React from 'react';
 import { FacturXBadge } from '@/components/ui/primitives';
 import { Icon } from '@/components/ui/Icon';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -27,9 +28,9 @@ const STATUS_OPTIONS = [
 
 const TONE_COLOR: Record<string, string> = {
   neutral: 'var(--text-3)',
-  info:    'var(--info, #3b82f6)',
-  danger:  'var(--danger, #ef4444)',
-  success: 'var(--success, #22c55e)',
+  info:    'var(--info)',
+  danger:  'var(--danger)',
+  success: 'var(--success)',
 };
 
 const fmt = (n: number) =>
@@ -145,9 +146,7 @@ export const ListView = ({
           );
         })}
         {invoices.length === 0 && (
-          <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
-            Aucune facture
-          </div>
+          <EmptyState icon="invoice" title="Aucune facture" description="Crée ta première facture avec le bouton ci-dessus." />
         )}
       </div>
     );
@@ -234,9 +233,7 @@ export const ListView = ({
           </tbody>
         </table>
         {invoices.length === 0 && (
-          <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
-            Aucune facture
-          </div>
+          <EmptyState icon="invoice" title="Aucune facture" description="Crée ta première facture avec le bouton ci-dessus." />
         )}
       </div>
     </div>

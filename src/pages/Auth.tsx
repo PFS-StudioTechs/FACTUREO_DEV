@@ -2,6 +2,13 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Icon } from "@/components/ui/Icon";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const SHOWCASE_POINTS: { icon: string; title: string; desc: string }[] = [
+  { icon: "invoice", title: "Facturation Factur-X en 3 clics", desc: "Génération automatique, conforme, envoyée par email." },
+  { icon: "zap", title: "Luca, ton copilote IA", desc: "Relances, prévisionnel, notes de frais — Luca anticipe et te propose l'action." },
+  { icon: "trending", title: "Pilotage en temps réel", desc: "Trésorerie, échéances, tendances — compris en 5 secondes." },
+];
 
 type AuthView = "login" | "signup" | "forgot-password";
 type SiretStatus = "idle" | "checking" | "valid" | "invalid";
@@ -18,6 +25,7 @@ interface SiretCompany {
 }
 
 const Auth = () => {
+  const isMobile = useIsMobile();
   const [view, setView] = useState<AuthView>("login");
   // Login / forgot-password
   const [email, setEmail] = useState("");
@@ -156,20 +164,60 @@ const Auth = () => {
 
   return (
     <div style={{
-      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "var(--bg-0)", padding: 16,
-      backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.03 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>\")",
+      minHeight: "100vh", display: "flex",
+      background: "var(--bg-0)",
     }}>
+      {/* Showcase — desktop only, la connexion devient une vitrine produit */}
+      {!isMobile && (
+        <div style={{
+          flex: "0 0 46%", minWidth: 420, display: "flex", flexDirection: "column", justifyContent: "center",
+          padding: "48px 56px", position: "relative", overflow: "hidden",
+          background: "var(--grad-hero)", borderRight: "1px solid var(--border-subtle)",
+        }}>
+          <div aria-hidden style={{
+            position: "absolute", left: -140, bottom: -140, width: 360, height: 360, borderRadius: "50%",
+            background: "radial-gradient(closest-side, var(--accent-soft-2), transparent)", pointerEvents: "none",
+          }} />
+          <div style={{ position: "relative", zIndex: 1, maxWidth: 400 }}>
+            <img src="/logo.svg" alt="Facturéo" style={{ width: 48, height: 48, borderRadius: "var(--r-3)", marginBottom: 24 }} />
+            <h1 style={{ fontSize: 34, fontWeight: 700, color: "var(--text-1)", margin: 0, letterSpacing: "-0.03em", lineHeight: 1.15 }}>
+              Ton copilote administratif, propulsé par l'IA<span style={{ color: "var(--accent)" }}>.</span>
+            </h1>
+            <p style={{ fontSize: 14.5, color: "var(--text-2)", margin: "14px 0 36px", lineHeight: 1.6 }}>
+              Facturation, relances, prévisionnel et notes de frais — Luca anticipe et t'accompagne à chaque étape.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+              {SHOWCASE_POINTS.map(p => (
+                <div key={p.title} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                  <span style={{
+                    width: 36, height: 36, borderRadius: "var(--r-3)", flexShrink: 0,
+                    background: "var(--ai-soft)", display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <Icon name={p.icon} size={17} color="var(--ai-bright)" />
+                  </span>
+                  <div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-1)" }}>{p.title}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-3)", marginTop: 2, lineHeight: 1.5 }}>{p.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Form panel */}
+      <div style={{
+        flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+        backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.03 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>\")",
+      }}>
       <div style={{ width: "100%", maxWidth: 420 }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{
+          <img src="/logo.svg" alt="Facturéo" style={{
             width: 52, height: 52, borderRadius: "var(--r-4)",
-            background: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center",
             marginBottom: 12, boxShadow: "var(--shadow-accent)",
-          }}>
-            <Icon name="invoice" size={26} color="rgba(0,0,0,0.8)" />
-          </div>
+          }} />
           <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-1)", margin: 0, letterSpacing: "-0.025em" }}>
             Factur<span style={{ color: "var(--accent-bright)" }}>éo</span>
           </h1>
@@ -284,7 +332,7 @@ const Auth = () => {
                     </div>
 
                     {siretError && (
-                      <p style={{ fontSize: 12, color: "var(--error, #ef4444)", marginTop: 6 }}>{siretError}</p>
+                      <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 6 }}>{siretError}</p>
                     )}
 
                     {siretStatus === "valid" && siretCompany && (
@@ -448,6 +496,7 @@ const Auth = () => {
             </>
           )}
         </div>
+      </div>
       </div>
     </div>
   );
