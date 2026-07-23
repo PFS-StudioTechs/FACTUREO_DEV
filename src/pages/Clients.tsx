@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Button, Pill, Avatar, Money } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/Icon";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { Tables } from "@/integrations/supabase/types";
 import SiretLookupField from "@/components/ui/SiretLookupField";
@@ -298,14 +300,16 @@ const Clients = () => {
             <p style={{ fontSize: 14, margin: 0 }}>Sélectionnez une entreprise pour voir ses clients</p>
           </div>
         ) : isLoading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 200 }}>
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+            {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} height={112} />)}
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: '48px 0', color: 'var(--text-3)' }}>
-            <Icon name="users" size={36} />
-            <p style={{ fontSize: 13, margin: 0 }}>Aucun client enregistré</p>
-          </div>
+          <EmptyState
+            icon="users"
+            title="Aucun client enregistré"
+            description="Ajoute ton premier client pour cette entreprise."
+            action={{ label: "Ajouter", onClick: () => setDialogOpen(true) }}
+          />
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
             {filtered.map(client => (

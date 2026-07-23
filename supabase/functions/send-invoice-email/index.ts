@@ -12,34 +12,32 @@ serve(async (req) => {
     const toEmails: string[] = recipientEmails?.length ? recipientEmails : recipientEmail ? [recipientEmail] : [];
     if (toEmails.length === 0 || !pdfBase64) throw new Error("recipientEmails and pdfBase64 are required");
 
-    const SENDGRID_API_KEY = Deno.env.get("SENDGRID_API_KEY");
+    const BREVO_API_KEY = Deno.env.get("BREVO_API_KEY");
     const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "facturation@factureo.fr";
 
-    if (!SENDGRID_API_KEY) throw new Error("SENDGRID_API_KEY not configured");
+    if (!BREVO_API_KEY) throw new Error("BREVO_API_KEY not configured");
 
-    const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${SENDGRID_API_KEY}`,
+        "api-key": BREVO_API_KEY,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        personalizations: [{ to: toEmails.map(email => ({ email })) }],
-        from: { email: FROM_EMAIL },
+        sender: { email: FROM_EMAIL },
+        to: toEmails.map(email => ({ email })),
         subject: `Facture N° ${invoiceNumber}`,
-        content: [{ type: "text/plain", value: emailBody }],
-        attachments: [{
+        textContent: emailBody,
+        attachment: [{
           content: pdfBase64,
-          type: "application/pdf",
-          filename: fileName || `${invoiceNumber}.pdf`,
-          disposition: "attachment",
+          name: fileName || `${invoiceNumber}.pdf`,
         }],
       }),
     });
 
     if (!res.ok) {
       const err = await res.text();
-      throw new Error(`SendGrid error: ${res.status} — ${err}`);
+      throw new Error(`Brevo error: ${res.status} — ${err}`);
     }
 
     return new Response(

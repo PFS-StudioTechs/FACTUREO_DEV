@@ -3,7 +3,8 @@ const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ?? "";
 export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? "";
   const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-  const isAllowed = (ALLOWED_ORIGIN && origin === ALLOWED_ORIGIN) || isLocalhost;
+  const isVercel = /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin);
+  const isAllowed = (ALLOWED_ORIGIN && origin === ALLOWED_ORIGIN) || isLocalhost || isVercel;
 
   return {
     "Access-Control-Allow-Origin": isAllowed ? origin : (ALLOWED_ORIGIN || "*"),

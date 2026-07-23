@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { ShieldCheck, UserCheck, Mail, Phone } from "lucide-react";
 import { Button, Pill, Avatar } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/Icon";
+import { SkeletonRows } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 
 const UserManagement = () => {
   const { user } = useAuth();
@@ -272,12 +274,9 @@ const UserManagement = () => {
 
         {/* Active users */}
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-3)', fontSize: 13 }}>Chargement…</div>
+          <div style={{ padding: 16 }}><SkeletonRows count={4} rowHeight={48} /></div>
         ) : usersWithRoles.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: 'var(--text-3)', fontSize: 13, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
-            <Icon name="users" size={36} />
-            Aucun utilisateur
-          </div>
+          <EmptyState icon="users" title="Aucun utilisateur" />
         ) : (
           <div style={{ background: 'var(--bg-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-4)', overflow: 'hidden' }}>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>

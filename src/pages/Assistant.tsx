@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Pill } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/Icon";
+import { SkeletonRows } from "@/components/ui/skeleton";
 import { useAssistantSignals } from "@/hooks/useAssistantSignals";
 import type { Severite } from "@/lib/assistant/signals";
 
@@ -24,15 +25,25 @@ const Assistant = () => {
         padding: isMobile ? "12px 16px" : "16px 24px", borderBottom: "1px solid var(--border)",
         display: "flex", alignItems: "center", gap: 12,
       }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, color: "var(--text-1)", margin: 0, letterSpacing: "-0.02em", flex: 1 }}>
-          Ce qui requiert votre attention
-        </h1>
+        <span style={{
+          width: 28, height: 28, borderRadius: "50%", flexShrink: 0, overflow: "hidden",
+          background: "var(--ai-soft)",
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <img src="/luca-avatar.png" alt="Luca" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 600, color: "var(--text-1)", margin: 0, letterSpacing: "-0.02em" }}>
+            Ce qui requiert votre attention
+          </h1>
+          <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>Repéré par Luca</div>
+        </div>
         {signals.length > 0 && <Pill size="sm" tone="neutral">{signals.length}</Pill>}
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px 24px" }}>
         {isLoading ? (
-          <div style={{ fontSize: 13, color: "var(--text-3)" }}>Chargement…</div>
+          <SkeletonRows count={4} rowHeight={54} />
         ) : signals.length === 0 ? (
           <div style={{ padding: "64px 0", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
             <Icon name="check" size={36} style={{ marginBottom: 10, display: "block", margin: "0 auto 10px" }} />
@@ -63,7 +74,7 @@ const Assistant = () => {
                     <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-1)" }}>{s.titre}</div>
                     <div style={{ fontSize: 11.5, color: "var(--text-3)" }}>{s.description}</div>
                   </div>
-                  <span style={{ fontSize: 12, color: "var(--accent-bright)", display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                  <span style={{ fontSize: 12, color: "var(--ai-bright)", display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
                     {s.actionLabel} <Icon name="arrowRight" size={13} />
                   </span>
                 </button>

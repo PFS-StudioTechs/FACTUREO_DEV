@@ -21,7 +21,8 @@
       "PowerShell(*Invoke-SSHCommand*)",
       "PowerShell(*Set-SCPItem*)",
       "PowerShell(*Remove-SSHSession*)",
-      "PowerShell(*Import-Module Posh-SSH*)"
+      "PowerShell(*Import-Module Posh-SSH*)",
+      "Bash(vercel whoami *)"
     ]
   }
 }

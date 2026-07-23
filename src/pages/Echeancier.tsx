@@ -14,6 +14,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { SkeletonRows } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { computeAutoEcheances, dedupeAgainstExisting, type NewEcheance } from "@/lib/obligations/generateEcheances";
 import { regenerateNextOccurrence } from "@/lib/obligations/recurrence";
 import { getUrgencyLevel, type UrgencyLevel } from "@/lib/obligations/urgency";
@@ -274,12 +276,14 @@ const Echeancier = () => {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px 24px" }}>
         {isLoading ? (
-          <div style={{ fontSize: 13, color: "var(--text-3)" }}>Chargement…</div>
+          <SkeletonRows count={5} rowHeight={54} />
         ) : filtered.length === 0 ? (
-          <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
-            <Icon name="calendar" size={36} style={{ marginBottom: 10, display: "block", margin: "0 auto 10px" }} />
-            Aucune échéance
-          </div>
+          <EmptyState
+            icon="calendar"
+            title="Aucune échéance"
+            description="Ajoute une échéance ou laisse Facturéo la générer automatiquement depuis tes obligations récurrentes."
+            action={{ label: "Nouvelle échéance", onClick: openCreate }}
+          />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {filtered.map(e => {

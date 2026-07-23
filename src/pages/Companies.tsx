@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { HelpCircle, Upload, Loader2 } from "lucide-react";
 import { Button, Avatar } from "@/components/ui/primitives";
 import { Icon } from "@/components/ui/Icon";
+import { SkeletonRows } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import type { Tables } from "@/integrations/supabase/types";
 import SiretLookupField from "@/components/ui/SiretLookupField";
 
@@ -200,12 +202,14 @@ const Companies = () => {
         {(!isMobile || !selectedCompany) && (
         <div style={{ width: isMobile ? '100%' : 280, flexShrink: 0, borderRight: isMobile ? 'none' : '1px solid var(--border)', overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
           {isLoading ? (
-            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>Chargement…</div>
+            <div style={{ padding: 12 }}><SkeletonRows count={4} rowHeight={44} /></div>
           ) : companies.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-3)', fontSize: 13 }}>
-              <Icon name="building" size={32} style={{ marginBottom: 8, display: 'block', margin: '0 auto 8px' }} />
-              Aucune entreprise
-            </div>
+            <EmptyState
+              icon="building"
+              title="Aucune entreprise"
+              description="Ajoute ta première entreprise pour commencer à facturer."
+              action={{ label: "Nouvelle entreprise", onClick: () => { setForm(emptyCompany); setDialogOpen(true); } }}
+            />
           ) : companies.map(c => {
             const active = selectedCompany?.id === c.id;
             return (

@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { SkeletonRows } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { isUnpaid, isLate, effectiveStatutPaiement } from "@/lib/payments/lateStatus";
 import { generateReminderDraft, REMINDER_LEVELS, type ReminderLevel } from "@/lib/payments/reminderTemplates";
 
@@ -147,12 +149,9 @@ const Relances = () => {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px 24px" }}>
         {isLoading ? (
-          <div style={{ fontSize: 13, color: "var(--text-3)" }}>Chargement…</div>
+          <SkeletonRows count={5} rowHeight={54} />
         ) : invoices.length === 0 ? (
-          <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-3)", fontSize: 13 }}>
-            <Icon name="check" size={36} style={{ marginBottom: 10, display: "block", margin: "0 auto 10px" }} />
-            Aucune facture impayée
-          </div>
+          <EmptyState icon="check" title="Aucune facture impayée" description="Tout est réglé — rien à relancer pour le moment." />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {invoices.map(inv => {
