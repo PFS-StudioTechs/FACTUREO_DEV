@@ -371,7 +371,9 @@ export const CreateInvoiceModal = ({
           <Stepper step={step} />
           {step === 2 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 0' }}>
-              <Button variant="ghost" size="md" onClick={() => setStep(s => s - 1)}>Retour</Button>
+              {!isMobile && (
+                <Button variant="ghost" size="md" onClick={() => setStep(s => s - 1)}>Retour</Button>
+              )}
               <div style={{ flex: 1 }} />
               <Button
                 variant="primary" size="md" icon="send"
