@@ -369,6 +369,19 @@ export const CreateInvoiceModal = ({
             </button>
           </div>
           <Stepper step={step} />
+          {step === 2 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 0' }}>
+              <Button variant="ghost" size="md" onClick={() => setStep(s => s - 1)}>Retour</Button>
+              <div style={{ flex: 1 }} />
+              <Button
+                variant="primary" size="md" icon="send"
+                onClick={handleSubmit}
+                disabled={isPending || !companyId || !clientId || lines.length === 0 || lines.some(l => !l.designation.trim())}
+              >
+                {isPending ? 'Enregistrement…' : editingInvoice ? 'Mettre à jour' : 'Créer la facture'}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Body */}
@@ -863,9 +876,10 @@ export const CreateInvoiceModal = ({
               Manque avant de créer : {submitBlockers.join(', ')}.
             </div>
           )}
+          {step < 2 && (
           <div style={{
             padding: isMobile ? '10px 16px' : '14px 24px',
-            borderTop: step === 2 && submitBlockers.length > 0 ? 'none' : '1px solid var(--border)',
+            borderTop: '1px solid var(--border)',
             display: 'flex', alignItems: 'center', gap: 10,
           }}>
           {!isMobile && (
@@ -877,35 +891,25 @@ export const CreateInvoiceModal = ({
           {step > 0 && (
             <Button variant="ghost" size="md" onClick={() => setStep(s => s - 1)} style={isMobile ? { flex: 1 } : undefined}>Retour</Button>
           )}
-          {step < 2 ? (
-            isMobile ? (
-              <div style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                fontSize: 12, color: 'var(--text-3)', padding: '11px 0',
-              }}>
-                Glisser pour continuer
-                <Icon name="arrowRight" size={13} />
-              </div>
-            ) : (
-              <Button
-                variant="primary" size="md" iconRight="arrowRight"
-                onClick={() => setStep(s => s + 1)}
-                disabled={step === 0 && (!companyId || !clientId)}
-              >
-                Étape suivante
-              </Button>
-            )
+          {isMobile ? (
+            <div style={{
+              flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              fontSize: 12, color: 'var(--text-3)', padding: '11px 0',
+            }}>
+              Glisser pour continuer
+              <Icon name="arrowRight" size={13} />
+            </div>
           ) : (
             <Button
-              variant="primary" size="md" icon="send"
-              onClick={handleSubmit}
-              disabled={isPending || !companyId || !clientId || lines.length === 0 || lines.some(l => !l.designation.trim())}
-              style={isMobile ? { flex: 1 } : undefined}
+              variant="primary" size="md" iconRight="arrowRight"
+              onClick={() => setStep(s => s + 1)}
+              disabled={step === 0 && (!companyId || !clientId)}
             >
-              {isPending ? 'Enregistrement…' : editingInvoice ? 'Mettre à jour' : 'Créer la facture'}
+              Étape suivante
             </Button>
           )}
           </div>
+          )}
         </div>
       </div>
     </div>
