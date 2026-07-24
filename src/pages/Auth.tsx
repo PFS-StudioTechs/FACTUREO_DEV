@@ -193,7 +193,7 @@ const Auth = () => {
           <div style={{ position: "relative", zIndex: 1, maxWidth: 400 }}>
             <img src="/logo.svg" alt="Facturéo" style={{
               width: 72, height: 72, borderRadius: "var(--r-4)",
-              display: "block", margin: "0 auto 28px",
+              display: "block", marginBottom: 28,
             }} />
             <h1 style={{ fontSize: 34, fontWeight: 700, color: "var(--text-1)", margin: 0, letterSpacing: "-0.03em", lineHeight: 1.15 }}>
               Ton copilote administratif, propulsé par l'IA<span style={{ color: "var(--accent)" }}>.</span>
@@ -264,6 +264,32 @@ const Auth = () => {
         backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.03 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>\")",
       }}>
       <div style={{ width: "100%", maxWidth: 420 }}>
+        {/* Vitrine compacte — visible sur mobile puisque le panneau desktop est masqué */}
+        {isMobile && (
+          <div style={{ marginBottom: 24 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text-1)", margin: 0, letterSpacing: "-0.02em", lineHeight: 1.2, textAlign: "center" }}>
+              Ton copilote administratif, propulsé par l'IA<span style={{ color: "var(--accent)" }}>.</span>
+            </h1>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 16 }}>
+              {SHOWCASE_POINTS.map(p => (
+                <div key={p.title} style={{
+                  display: "flex", gap: 10, alignItems: "center",
+                  background: "var(--bg-2)", border: "1px solid var(--border-subtle)",
+                  borderRadius: "var(--r-3)", padding: "10px 12px",
+                }}>
+                  <span style={{
+                    width: 30, height: 30, borderRadius: "var(--r-2)", flexShrink: 0,
+                    background: "var(--ai-soft)", display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <Icon name={p.icon} size={15} color="var(--ai-bright)" />
+                  </span>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-1)" }}>{p.title}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <img src="/logo.svg" alt="Facturéo" style={{

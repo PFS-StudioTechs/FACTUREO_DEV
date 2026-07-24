@@ -121,6 +121,18 @@ export const CreateInvoiceModal = ({
   editingInvoice, voicePrefill, onSave, isPending,
 }: CreateInvoiceModalProps) => {
   const isMobile = useIsMobile();
+  // 100dvh ne se recalcule pas quand le clavier virtuel s'ouvre sur certains
+  // navigateurs mobiles (footer/bouton "Suivant" alors masqué derrière le clavier).
+  // On suit la hauteur visible réelle via visualViewport pour compenser.
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isMobile || !open || typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const update = () => setViewportHeight(vv.height);
+    update();
+    vv.addEventListener('resize', update);
+    return () => vv.removeEventListener('resize', update);
+  }, [isMobile, open]);
   const [step, setStep] = useState(0);
   const [companyId, setCompanyId] = useState('');
   const [clientId, setClientId] = useState('');
@@ -280,7 +292,7 @@ export const CreateInvoiceModal = ({
         onClick={e => e.stopPropagation()}
         style={isMobile ? {
           position: 'fixed', inset: 0,
-          width: '100%', height: '100dvh', maxHeight: '100dvh',
+          width: '100%', height: viewportHeight ?? '100dvh', maxHeight: viewportHeight ?? '100dvh',
           background: 'var(--bg-2)', borderRadius: 0,
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         } : {
