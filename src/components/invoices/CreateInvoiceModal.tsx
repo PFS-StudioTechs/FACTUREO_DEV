@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button, Input, Avatar, FacturXBadge, Toggle, Kbd } from '@/components/ui/primitives';
 import { Icon } from '@/components/ui/Icon';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { toast } from 'sonner';
 
 export interface InvoiceLine {
   designation: string;
@@ -211,6 +212,33 @@ export const CreateInvoiceModal = ({
   const autofilledClientRef = useRef<string | null>(null);
   const linesSeededByVoiceRef = useRef(false);
 
+  // Navigation par slide sur mobile (remplace le bouton "Étape suivante", qui
+  // finissait masqué par le clavier/la barre d'adresse sur certains téléphones).
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const goNextStep = () => {
+    if (step === 0 && (!companyId || !clientId)) {
+      toast.error('Sélectionnez une entreprise et un client avant de continuer');
+      return;
+    }
+    setStep(s => Math.min(s + 1, 2));
+  };
+  const goPrevStep = () => setStep(s => Math.max(s - 1, 0));
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0) goNextStep();
+    else goPrevStep();
+  };
+
   useEffect(() => {
     if (voicePrefill && open) {
       if (voicePrefill.selectedCompanyId) setCompanyId(voicePrefill.selectedCompanyId);
@@ -344,7 +372,11 @@ export const CreateInvoiceModal = ({
         </div>
 
         {/* Body */}
-        <div style={{ flex: 1, overflowY: 'auto' }}>
+        <div
+          style={{ flex: 1, overflowY: 'auto' }}
+          onTouchStart={isMobile ? handleTouchStart : undefined}
+          onTouchEnd={isMobile ? handleTouchEnd : undefined}
+        >
 
           {/* Step 0 — Client */}
           {step === 0 && (
@@ -846,14 +878,23 @@ export const CreateInvoiceModal = ({
             <Button variant="ghost" size="md" onClick={() => setStep(s => s - 1)} style={isMobile ? { flex: 1 } : undefined}>Retour</Button>
           )}
           {step < 2 ? (
-            <Button
-              variant="primary" size="md" iconRight="arrowRight"
-              onClick={() => setStep(s => s + 1)}
-              disabled={step === 0 && (!companyId || !clientId)}
-              style={isMobile ? { flex: 1 } : undefined}
-            >
-              Étape suivante
-            </Button>
+            isMobile ? (
+              <div style={{
+                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                fontSize: 12, color: 'var(--text-3)', padding: '11px 0',
+              }}>
+                Glisser pour continuer
+                <Icon name="arrowRight" size={13} />
+              </div>
+            ) : (
+              <Button
+                variant="primary" size="md" iconRight="arrowRight"
+                onClick={() => setStep(s => s + 1)}
+                disabled={step === 0 && (!companyId || !clientId)}
+              >
+                Étape suivante
+              </Button>
+            )
           ) : (
             <Button
               variant="primary" size="md" icon="send"
