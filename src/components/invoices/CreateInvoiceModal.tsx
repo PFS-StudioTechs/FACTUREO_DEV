@@ -121,14 +121,16 @@ export const CreateInvoiceModal = ({
   editingInvoice, voicePrefill, onSave, isPending,
 }: CreateInvoiceModalProps) => {
   const isMobile = useIsMobile();
-  // 100dvh ne se recalcule pas quand le clavier virtuel s'ouvre sur certains
-  // navigateurs mobiles (footer/bouton "Suivant" alors masqué derrière le clavier).
-  // On suit la hauteur visible réelle via visualViewport pour compenser.
+  // Le clavier virtuel réduit le visualViewport sans que le layout viewport (donc
+  // inset:0) ne bouge sur certains navigateurs mobiles — footer masqué derrière
+  // le clavier. On ne force une hauteur px que dans ce cas précis (viewport visible
+  // notablement plus petit que la fenêtre) ; sinon inset:0 seul gère tout le reste
+  // (barre d'adresse Android qui apparaît/disparaît, etc.).
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   useEffect(() => {
     if (!isMobile || !open || typeof window === 'undefined' || !window.visualViewport) return;
     const vv = window.visualViewport;
-    const update = () => setViewportHeight(vv.height);
+    const update = () => setViewportHeight(vv.height < window.innerHeight - 80 ? vv.height : null);
     update();
     vv.addEventListener('resize', update);
     return () => vv.removeEventListener('resize', update);
@@ -292,7 +294,11 @@ export const CreateInvoiceModal = ({
         onClick={e => e.stopPropagation()}
         style={isMobile ? {
           position: 'fixed', inset: 0,
-          width: '100%', height: viewportHeight ?? '100dvh', maxHeight: viewportHeight ?? '100dvh',
+          width: '100%',
+          // Pas de height/dvh fixe par défaut : inset:0 seul suit la vraie zone
+          // visible (barre d'adresse Android qui apparaît/disparaît). On ne force
+          // une hauteur en px que si le clavier virtuel réduit le visualViewport.
+          ...(viewportHeight ? { height: viewportHeight, maxHeight: viewportHeight } : {}),
           background: 'var(--bg-2)', borderRadius: 0,
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         } : {

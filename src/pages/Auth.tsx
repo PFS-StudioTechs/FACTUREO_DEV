@@ -294,7 +294,7 @@ const Auth = () => {
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <img src="/logo.svg" alt="Facturéo" style={{
             width: 52, height: 52, borderRadius: "var(--r-4)",
-            marginBottom: 12, boxShadow: "var(--shadow-accent)",
+            margin: "0 auto 12px", boxShadow: "var(--shadow-accent)",
           }} />
           <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text-1)", margin: 0, letterSpacing: "-0.025em" }}>
             Factur<span style={{ color: "var(--accent-bright)" }}>éo</span>
